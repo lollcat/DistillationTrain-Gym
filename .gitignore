@@ -1,0 +1,5 @@
+*.v2
+*.pyc
+*.xml
+*.iml
+*checkpoint.ipynb
