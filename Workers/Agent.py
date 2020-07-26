@@ -27,6 +27,7 @@ class Agent:
         self.gamma = gamma
         self.history = []
         self.summary_writer = summary_writer
+        self.step = 0
 
     def populate_memory(self):
         _ = self.env.reset()
@@ -47,6 +48,7 @@ class Agent:
             done = False
             total_reward = 0
             while not done:
+                self.step += 1
                 state = self.env.State.state.copy()
                 action_continuous = np.clip(self.param_model.predict(state[np.newaxis, :]) + 0.3 *
                                             np.random.normal(0, 1, size=self.env.continuous_action_space.shape[0]),
@@ -58,7 +60,7 @@ class Agent:
                 action = action_continuous, action_discrete
                 # now take action
                 tops_state, bottoms_state, annual_revenue, TAC, done, info = self.env.step(action)
-                reward = annual_revenue
+                reward = annual_revenue + TAC
                 total_reward += reward
                 if action_discrete == 0:  # seperating action
                     self.memory.add(
@@ -86,11 +88,20 @@ class Agent:
         bottoms_state_batch = np.array([each[6] for each in batch])
         done_batch = np.array([each[7] for each in batch])
 
+        # next state includes tops and bottoms
+        next_continuous_action_tops = self.param_model.predict_on_batch(tops_state_batch)
+        next_continuous_action_bottoms = self.param_model.predict_on_batch(bottoms_state_batch)
+        Q_value_top = tf.keras.backend.sum(self.critic_model.predict_on_batch(
+            [tops_state_batch, next_continuous_action_tops]), axis=0)
+        Q_value_bottoms = tf.keras.backend.sum(self.critic_model.predict_on_batch(
+            [bottoms_state_batch, next_continuous_action_bottoms]), axis=0)
+        # target
+        # note we don't use the actual done values because the max function is doing a version of this
+        target_next_state_value = self.gamma * (tf.math.maximum(Q_value_top, 0) + tf.math.maximum(Q_value_bottoms, 0))
         with tf.GradientTape(persistent=True) as tape:
             predict_param = self.param_model.predict_on_batch(state_batch)
             Q_value = tf.keras.backend.sum(self.critic_model.predict_on_batch([state_batch, predict_param]), axis=0)
             loss_param = - Q_value
-
 
             # compute Q net updates
             # first for TAC and revenue which is simple
@@ -99,26 +110,16 @@ class Agent:
             loss_revenue = tf.keras.losses.MSE(revenue_prediction,
                                                tf.convert_to_tensor(annual_revenue_batch, dtype=np.float32))
             loss_TAC = tf.keras.losses.MSE(TAC_prediction, tf.convert_to_tensor(TAC_batch, dtype=np.float32))
-            # next state includes tops and bottoms
-            next_continuous_action_tops = self.param_model.predict_on_batch(tops_state_batch)
-            next_continuous_action_bottoms = self.param_model.predict_on_batch(bottoms_state_batch)
-            Q_value_top = tf.keras.backend.sum(self.critic_model.predict_on_batch(
-                [tops_state_batch, next_continuous_action_tops]), axis=0)
-            Q_value_bottoms = tf.keras.backend.sum(self.critic_model.predict_on_batch(
-                [bottoms_state_batch, next_continuous_action_bottoms]), axis=0)
-            # target
-            # note we don't use the actual done values because the max function is doing a version of this
-            target = self.gamma*(tf.math.maximum(Q_value_top, 0) + tf.math.maximum(Q_value_bottoms, 0))
-            loss_next_state_value = tf.keras.losses.MSE(tf.convert_to_tensor(target, np.float32),
+            loss_next_state_value = tf.keras.losses.MSE(tf.convert_to_tensor(target_next_state_value, np.float32),
                                                         future_reward_prediction)
 
         with self.summary_writer.as_default():
-            tf.summary.scalar("param batch mean loss", tf.math.reduce_mean(loss_param))
-            tf.summary.scalar("revenue batch mean loss", tf.math.reduce_mean(loss_revenue))
-            tf.summary.scalar("TAC batch mean loss", tf.math.reduce_mean(loss_TAC))
-            tf.summary.scalar("next_state_value batch mean loss", tf.math.reduce_mean(loss_next_state_value))
+            tf.summary.scalar("param batch mean loss", tf.math.reduce_mean(loss_param), step=self.step)
+            tf.summary.scalar("revenue batch mean loss", tf.math.reduce_mean(loss_revenue), step=self.step)
+            tf.summary.scalar("TAC batch mean loss", tf.math.reduce_mean(loss_TAC), step=self.step)
+            tf.summary.scalar("next_state_value batch mean loss", tf.math.reduce_mean(loss_next_state_value), step=self.step)
             tf.summary.scalar("total DQN loss", tf.math.reduce_mean(loss_TAC) + tf.math.reduce_mean(loss_revenue) +
-                              tf.math.reduce_mean(loss_next_state_value))
+                              tf.math.reduce_mean(loss_next_state_value), step=self.step)
 
         # get gradients of loss with respect to the param_model weights
         gradient_param = tape.gradient(loss_param, self.param_model.trainable_weights)

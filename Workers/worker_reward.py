@@ -66,7 +66,7 @@ class Worker_reward:
                                             np.random.normal(0, 1, size=self.env.continuous_action_space.shape[0]),
                                             a_min=-1, a_max=1)
         # get discrete action
-        Q_value = np.sum(self.local_dqn_model.predict([state[np.newaxis, :], action_continuous]), axis=0)
+        Q_value = np.sum(self.local_dqn_model.predict([state, action_continuous]))
         action_discrete = self.eps_greedy(Q_value, current_step, stop_step)
 
         action_continuous = action_continuous[0]  # take it back to the correct shape
@@ -99,8 +99,8 @@ class Worker_reward:
             self.state = self.env.State.state.copy()
             tops_state, bottoms_state, revenue, TAC, done, info = self.env.step(action)
             if action_discrete == 0:  # seperating action
-                step = Step((self.state, action_continuous, action_discrete, revenue, TAC, tops_state, bottoms_state,
-                     done))
+                step = Step(self.state, action_continuous, action_discrete, revenue, TAC, tops_state, bottoms_state,
+                     done)
                 experience.append(step)
             reward = revenue - TAC
             score += reward
@@ -135,11 +135,27 @@ class Worker_reward:
             return
 
     def get_gradient(self, state, action_continuous, revenue, TAC, tops_state, bottoms_state):
+        # param part
+        state = state[np.newaxis, :]
+        tops_state = tops_state[np.newaxis, :]
+        bottoms_state = bottoms_state[np.newaxis, :]
+        action_continuous = action_continuous[np.newaxis, :]
+
+        # next state includes tops and bottoms
+        next_continuous_action_tops = self.local_param_model(tops_state)
+        next_continuous_action_bottoms = self.local_param_model(bottoms_state)
+        Q_value_top = tf.keras.backend.sum(self.local_dqn_model(
+            [tops_state, next_continuous_action_tops]))
+        Q_value_bottoms = tf.keras.backend.sum(self.local_dqn_model(
+            [bottoms_state, next_continuous_action_bottoms]))
+        # target
+        # note we don't use the actual done values because the max function is doing a version of this
+        target_next_state_value = self.gamma * (tf.math.maximum(Q_value_top, 0) + tf.math.maximum(Q_value_bottoms, 0))
         with tf.GradientTape(persistent=True) as tape:
-            # param part
+
             tape.watch(self.local_param_model.trainable_weights)
-            predict_param = self.local_param_model.predict(state)
-            Q_value = tf.keras.backend.sum(self.local_dqn_model.predict([state, predict_param]))
+            predict_param = self.local_param_model(state)
+            Q_value = tf.keras.backend.sum(self.local_dqn_model([state, predict_param]))
             loss_param = - Q_value
 
             # Q_net part
@@ -147,21 +163,11 @@ class Worker_reward:
             # compute Q net updates
             # first for TAC and revenue which is simple
             revenue_prediction, TAC_prediction, future_reward_prediction = \
-                self.local_dqn_model.predict([state, action_continuous])
+                self.local_dqn_model([state, action_continuous])
             loss_revenue = tf.keras.losses.MSE(revenue_prediction,
                                                tf.convert_to_tensor(revenue, dtype=np.float32))
             loss_TAC = tf.keras.losses.MSE(TAC_prediction, tf.convert_to_tensor(TAC, dtype=np.float32))
-            # next state includes tops and bottoms
-            next_continuous_action_tops = self.local_param_model.predict(tops_state)
-            next_continuous_action_bottoms = self.local_param_model.predict(bottoms_state)
-            Q_value_top = tf.keras.backend.sum(self.local_dqn_model.predict(
-                [tops_state, next_continuous_action_tops]))
-            Q_value_bottoms = tf.keras.backend.sum(self.local_dqn_model.predict(
-                [bottoms_state, next_continuous_action_bottoms]))
-            # target
-            # note we don't use the actual done values because the max function is doing a version of this
-            target = self.gamma*(tf.math.maximum(Q_value_top, 0) + tf.math.maximum(Q_value_bottoms, 0))
-            loss_next_state_value = tf.keras.losses.MSE(tf.convert_to_tensor(target, np.float32),
+            loss_next_state_value = tf.keras.losses.MSE(tf.convert_to_tensor(target_next_state_value, np.float32),
                                                         future_reward_prediction)
 
         gradient_param = tape.gradient(loss_param, self.local_param_model.trainable_weights)
@@ -176,10 +182,10 @@ class Worker_reward:
 
         with self.summary_writer.as_default():
             tf.summary.scalar('param loss', loss_param, step=self.global_step)
-            tf.summary.scalar('loss_next_state_value', loss_next_state_value, step=self.global_step)
-            tf.summary.scalar('revenue loss', loss_revenue, step=self.global_step)
-            tf.summary.scalar('TAC loss', loss_TAC, step=self.global_step)
-            tf.summary.scalar('DQN TOTAL loss', loss_TAC + loss_revenue + loss_next_state_value, step=self.global_step)
+            tf.summary.scalar('loss_next_state_value', loss_next_state_value[0], step=self.global_step)
+            tf.summary.scalar('revenue loss', loss_revenue[0], step=self.global_step)
+            tf.summary.scalar('TAC loss', loss_TAC[0], step=self.global_step)
+            tf.summary.scalar('DQN TOTAL loss', loss_TAC[0] + loss_revenue[0] + loss_next_state_value[0], step=self.global_step)
         return gradient_param, gradient_dqn_total
 
     def update_all_weights(self, accumulated_dqn_gradients, accumulated_param_gradients):

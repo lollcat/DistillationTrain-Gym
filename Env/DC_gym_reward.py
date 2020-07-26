@@ -71,5 +71,5 @@ class DC_gym_reward(DC_Gym):
             done = False
         info = {}
         self.import_file()  # current workaround is to reset the file after each solve
-        return tops_state, bottoms_state, annual_revenue, TAC, done, info
+        return tops_state, bottoms_state, annual_revenue, -TAC, done, info
 

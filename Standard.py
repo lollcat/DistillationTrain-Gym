@@ -8,7 +8,7 @@ current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 log_dir = 'logs/' + "env2 agent" + current_time
 summary_writer = tf.summary.create_file_writer(log_dir)
 
-Agent = Agent(summary_writer=summary_writer, total_episodes=50, mem_length=20, batch_size=5)
+Agent = Agent(summary_writer=summary_writer, total_episodes=100, mem_length=50, batch_size=16)
 
 Agent.populate_memory()
 print("memory polulated")

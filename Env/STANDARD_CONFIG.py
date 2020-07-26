@@ -12,8 +12,10 @@ class CONFIG:
             Molar_weights = np.array([16.043, 30.07, 44.097, 58.124, 58.124, 72.151, 72.151])
             Heating_value = np.array([55.6,  51.9, 50.4, 49.5, 49.4,   55.2, 55.2]) #MJ/kg
             Price_per_MBTU = np.array([2.83, 2.54, 4.27, 5.79, 5.31,  10.41, 10.41])  #  $/Million Btu
+            MJ_per_MBTU = 1055.06
+            # units $/MBTU * MBTU/MJ * MJ/kg = $/kg
+            sales_prices = Price_per_MBTU/MJ_per_MBTU * Heating_value  # now in $/kg
 
-            sales_prices = Price_per_MBTU*1055.06 * Heating_value  # now in $/kg
 
             COCO_file = os.path.join(os.getcwd(), "Env\ChemSepExample.fsd")
 
@@ -27,8 +29,8 @@ class CONFIG:
             Heating_value = np.array([51.9,   49.0,   50.4,    48.5,    49.4,    48.6])  # MJ/kg
             Price_per_MBTU = np.array([2.54,  17.58,  4.27,    29.47,   5.31,    13.86])  # $/Million Btu
             MJ_per_MBTU = 1055.06
-
-            sales_prices = Price_per_MBTU * MJ_per_MBTU * Heating_value  # now in $/kg
+            # units $/MBTU * MBTU/MJ * MJ/kg = $/kg
+            sales_prices = Price_per_MBTU / MJ_per_MBTU * Heating_value  # now in $/kg
 
             COCO_file = os.path.join(os.getcwd(), "Env\ThomsonKing.fsd")
 
