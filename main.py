@@ -1,9 +1,22 @@
+"""PRIMARY CONFIG"""
+agent_config = 0
+max_global_steps = 6*150
+
+
 import tensorflow as tf
-from Env.DC_gym_reward import DC_gym_reward as DC_Gym
+if agent_config == 0:
+    CONFIG_string = "Simple State, Simple reward"
+    from Env.DC_gym import DC_Gym
+    from Nets.Critic_simple import Critic
+    from Workers.worker import Worker
+else:
+    CONFIG_string = "Simple State, Split reward"
+    from Env.DC_gym_reward import DC_gym_reward as DC_Gym
+    from Nets.Critic import Critic
+    from Workers.worker_reward import Worker_reward as Worker
 from Env.STANDARD_CONFIG import CONFIG
-from Nets.Critic import Critic
 from Nets.P_actor import ParameterAgent
-from Workers.worker_reward import Worker_reward as Worker
+
 import matplotlib.pyplot as plt
 
 import datetime
@@ -18,10 +31,8 @@ import itertools
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-"""CONFIG"""
-CONFIG_string = "worker split reward, simplified State"
+"""SECONDARY CONFIG"""
 standard_args = CONFIG(1).get_config()
-max_global_steps = 6*100
 alpha = 0.0001
 beta = alpha*10
 steps_per_update = 5

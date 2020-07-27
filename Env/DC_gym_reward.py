@@ -13,6 +13,7 @@ class DC_gym_reward(DC_Gym):
         continuous_actions, discrete_action = action
         real_continuous_actions = self.get_real_continuous_actions(continuous_actions)
         if discrete_action == self.discrete_action_space.n - 1:  # submit
+            self.current_step += 1
             self.State.submit_stream()
             if self.State.n_streams == 0 or self.State.final_outlet_streams == self.max_outlet_streams:
                 done = True
@@ -51,6 +52,7 @@ class DC_gym_reward(DC_Gym):
             bottoms = np.zeros(tops.shape)
             return tops, bottoms, 0, 0, done, info
 
+        self.current_step += 1  # if there is a sucessful solve then step the counter
         # TAC includes operating costs so we actually don't need these duties
         TAC, condenser_duty, reboiler_duty = self.get_outputs()
 
