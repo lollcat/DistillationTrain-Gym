@@ -1,11 +1,11 @@
 from tensorflow.keras.layers import Dense, Input, Concatenate, Flatten
 from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.optimizers import RMSprop, Adam
 
 
 
 class ParameterAgent:
-    def __init__(self, lr, n_continuous_actions, state_shape, layer_size=64):
+    def __init__(self, lr, n_continuous_actions, state_shape, layer_size=128):
         self.lr = lr
         self.n_continuous_actions = n_continuous_actions
         self.layer_size = layer_size
@@ -21,6 +21,7 @@ class ParameterAgent:
         output = Dense(self.n_continuous_actions, activation='tanh', name="output")(dense3)
 
         model = Model(inputs=input_state, outputs=output)
-        optimizer = RMSprop(lr=self.lr)
+        #optimizer = RMSprop(lr=self.lr)
+        optimizer = Adam(lr=self.lr)
 
         return model, optimizer

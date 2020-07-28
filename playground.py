@@ -21,7 +21,7 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 """CONFIG"""
 CONFIG_string = "worker split reward, simplified State"
 standard_args = CONFIG(1).get_config()
-max_global_steps = 6*100
+max_global_steps = 6*10
 alpha = 0.0001
 beta = alpha*10
 steps_per_update = 5

@@ -1,6 +1,7 @@
+# average runtime (123 episodes/66 min) is less than 2 minutes per episode
 """PRIMARY CONFIG"""
-agent_config = 0
-max_global_steps = 6*150
+agent_config = 1
+max_global_steps = 6*10
 
 
 import tensorflow as tf
@@ -46,8 +47,8 @@ num_workers = multiprocessing.cpu_count()
 global_counter = itertools.count()
 returns_list = []
 
-param_model, param_optimizer = ParameterAgent(beta, n_continuous_actions, state_shape).build_network()
-dqn_model, dqn_optimizer = Critic(alpha, n_continuous_actions, state_shape,).build_network()
+param_model, param_optimizer = ParameterAgent(alpha, n_continuous_actions, state_shape).build_network()
+dqn_model, dqn_optimizer = Critic(beta, n_continuous_actions, state_shape,).build_network()
 
 current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 log_dir = 'logs/' + current_time + CONFIG_string

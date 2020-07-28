@@ -1,11 +1,11 @@
 from tensorflow.keras.layers import Dense, Input, Concatenate, Flatten
 from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.optimizers import RMSprop, Adam
 import tensorflow as tf
 
 
 class Critic:
-    def __init__(self, lr, n_continuous_actions, state_shape, layer_size=64):
+    def __init__(self, lr, n_continuous_actions, state_shape, layer_size=128):
         self.lr = lr
         self.n_continuous_actions = n_continuous_actions
         self.layer_size = layer_size
@@ -28,6 +28,7 @@ class Critic:
         cost = Dense(1, activation='linear', name="TAC")(dense3)
 
         model = Model(inputs=[input_state, input_parameters], outputs=[future_reward, revenue, cost])
-        optimizer = RMSprop(lr=self.lr)
+        #optimizer = RMSprop(lr=self.lr)
+        optimizer = Adam(lr=self.lr)
 
         return model, optimizer
