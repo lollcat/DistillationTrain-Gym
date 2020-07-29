@@ -10,12 +10,13 @@ class DC_gym_reward(DC_Gym):
         super().__init__(*args, **kwargs)
 
     def step(self, action):
+        self.import_file()  # current workaround is to reset the file before each solve
         continuous_actions, discrete_action = action
         real_continuous_actions = self.get_real_continuous_actions(continuous_actions)
-        if discrete_action == self.discrete_action_space.n - 1:  # submit
+        if discrete_action == 1:  # submit
             self.current_step += 1
-            self.State.submit_stream()
-            if self.State.n_streams == 0 or self.State.final_outlet_streams == self.max_outlet_streams:
+            done = self.State.submit_stream()
+            if done or self.State.final_outlet_streams == self.max_outlet_streams:
                 done = True
             else:
                 done = False
@@ -28,6 +29,7 @@ class DC_gym_reward(DC_Gym):
 
         # put the selected stream (flows, temperature, pressure) as the input to a new column
         selected_stream = self.State.streams[0]
+        assert selected_stream.flows.max() > self.min_total_flow
         self.set_inlet_stream(selected_stream.flows, selected_stream.temperature, selected_stream.pressure)
 
         n_stages = int(real_continuous_actions[0])
@@ -61,8 +63,15 @@ class DC_gym_reward(DC_Gym):
         bottoms_flow, bottoms_temperature, bottoms_pressure = bottoms_info
         tops_state, bottoms_state = self.State.update_state(Stream(self.State.n_streams, tops_flow, tops_temperature, tops_pressure),
                                         Stream(self.State.n_streams+1, bottoms_flow, bottoms_temperature, bottoms_pressure))
-        annual_revenue = self.stream_value(tops_flow) + self.stream_value(bottoms_flow) - self.stream_value(selected_stream.flows)
 
+        annual_revenue = self.stream_value(tops_flow) + self.stream_value(bottoms_flow) - self.stream_value(selected_stream.flows)
+        mass_balance_rel_error = np.absolute(((selected_stream.flows/self.State.flow_norm - (
+                tops_state[:, 0:self.n_components] +
+                bottoms_state[:, 0:self.n_components]))
+                                  / np.maximum(selected_stream.flows, 0.01)/self.State.flow_norm)) # max to prevent divide by 0
+        if mass_balance_rel_error.max() >= 0.05:
+            print("should catch in breakpoint")
+        assert mass_balance_rel_error.max() < 0.05, f"Max error: {mass_balance_rel_error.max()}"
         if self.State.n_streams == self.max_outlet_streams or self.State.final_outlet_streams == self.max_outlet_streams:
             # this just sets a cap on where the episode must end
             # either all the streams are outlets in which case n_streams is zero
@@ -72,6 +81,5 @@ class DC_gym_reward(DC_Gym):
         else:
             done = False
         info = {}
-        self.import_file()  # current workaround is to reset the file after each solve
         return tops_state, bottoms_state, annual_revenue, -TAC, done, info
 

@@ -9,12 +9,12 @@ class CONFIG:
         if self.config_number == 0:  # ChemSepExample
             # currently from thesis code, just copying iso & n butane to be same values
             compound_names = ["Methane", "Ethane", "Propane", "Isobutane", "Butane",  "Iso-Pentane", "N-pentane"]
-            Molar_weights = np.array([16.043, 30.07, 44.097, 58.124, 58.124, 72.151, 72.151])
+            Molar_weights = np.array([16.043, 30.07, 44.097, 58.124, 58.124, 72.151, 72.151]) #g/mol
             Heating_value = np.array([55.6,  51.9, 50.4, 49.5, 49.4,   55.2, 55.2]) #MJ/kg
             Price_per_MBTU = np.array([2.83, 2.54, 4.27, 5.79, 5.31,  10.41, 10.41])  #  $/Million Btu
             MJ_per_MBTU = 1055.06
-            # units $/MBTU * MBTU/MJ * MJ/kg = $/kg
-            sales_prices = Price_per_MBTU/MJ_per_MBTU * Heating_value  # now in $/kg
+            # units $/MBTU * MBTU/MJ * MJ/kg * kg/g * g/mol  = $/mol
+            sales_prices = Price_per_MBTU/MJ_per_MBTU * Heating_value * (Molar_weights/1000)  # now in $/mol
 
 
             COCO_file = os.path.join(os.getcwd(), "Env\ChemSepExample.fsd")

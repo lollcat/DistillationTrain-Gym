@@ -8,6 +8,7 @@ from Env.DC_class import SimulatorDC
 
 class DC_Gym(SimulatorDC):
     """
+    NB - units of flowsheet must be configured!!!
     This version of the gym only has a single stream as the state. Discrete actions are just to seperate or not
     this is currently just inherited by DC_gym_reward
     """
@@ -16,7 +17,7 @@ class DC_Gym(SimulatorDC):
         super().__init__(document_path)
         self.sales_prices = sales_prices
         self.required_purity = required_purity
-        self.annual_operating_hours = annual_operating_hours
+        self.annual_operating_seconds= annual_operating_hours*3600
 
         feed_conditions = self.get_inlet_stream_conditions()
         self.original_feed = Stream(0, feed_conditions["flows"],
@@ -29,6 +30,7 @@ class DC_Gym(SimulatorDC):
         self.stream_table = [self.original_feed]
 
         self.State = State(self.original_feed, self.max_outlet_streams)
+        self.min_total_flow = self.State.flow_norm/20  # definately aren't interested in streams with 1/20th of the flow
 
         # contains a tuple of 3 (in, tops, bottoms) stream numbers describing the connections of streams & columns
         self.column_streams = []
@@ -53,8 +55,9 @@ class DC_Gym(SimulatorDC):
         self.error_counter = {"total_solves": 0,
                               "error_solves": 0}  # to get a general idea of how many solves are going wrong
         self.current_step = 0
-
+    """
     def step(self, action):
+        Big errors that must be compared with gym_reward before this is run
         continuous_actions, discrete_action = action
         real_continuous_actions = self.get_real_continuous_actions(continuous_actions)
         if discrete_action == self.discrete_action_space.n - 1:  # submit
@@ -119,7 +122,7 @@ class DC_Gym(SimulatorDC):
         info = {}
         self.import_file()  # current workaround is to reset the file after each solve
         return tops_state, bottoms_state, reward, done, info
-
+    """
 
     def get_real_continuous_actions(self, continuous_actions):
         # interpolation
@@ -162,7 +165,7 @@ class DC_Gym(SimulatorDC):
 
     def stream_value(self, stream_flow):
         if max(stream_flow / sum(stream_flow)) >= self.required_purity:
-            revenue_per_annum = max(stream_flow) * self.sales_prices[np.argmax(stream_flow)] * self.annual_operating_hours
+            revenue_per_annum = max(stream_flow) * self.sales_prices[np.argmax(stream_flow)] * self.annual_operating_seconds
             return revenue_per_annum
         else:
             return 0

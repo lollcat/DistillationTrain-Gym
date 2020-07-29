@@ -20,6 +20,7 @@ class SimulatorDC:
         :param doc_path:
         """
         self.doc_path = doc_path
+        self.quantity_basis = "mole"
         CoInitialize()
         self.doc = comtypes.client.CreateObject('COCO_COFE.Document', interface=cofeTypes.ICOFEDocument)
         self.import_file()
@@ -34,7 +35,7 @@ class SimulatorDC:
     def set_inlet_stream(self, flows, temperature, pressure):
         try:
             self.doc.GetStream('1').QueryInterface(coTypes.ICapeThermoMaterial). \
-                SetOverallProp("flow", "mole", array.array('d', flows))
+                SetOverallProp("flow", self.quantity_basis, array.array('d', flows))
             self.doc.GetStream('1').QueryInterface(coTypes.ICapeThermoMaterial). \
                 SetOverallProp("temperature", "", array.array('d', (temperature,)))
             self.doc.GetStream('1').QueryInterface(coTypes.ICapeThermoMaterial). \
@@ -46,7 +47,7 @@ class SimulatorDC:
     def get_inlet_stream_conditions(self):
         conditions = {
                 "flows": np.array(self.doc.GetStream('1').QueryInterface(coTypes.ICapeThermoMaterial).
-                    GetOverallProp("flow", "mole")),
+                    GetOverallProp("flow", self.quantity_basis)),
                 "temperature": self.doc.GetStream('1').QueryInterface(coTypes.ICapeThermoMaterial).
                     GetOverallProp("temperature", "")[0],
                 "pressure": self.doc.GetStream('1').QueryInterface(coTypes.ICapeThermoMaterial).
@@ -56,14 +57,14 @@ class SimulatorDC:
 
     def get_outlet_info(self):
         tops_flows = np.array(self.doc.GetStream('2').QueryInterface(coTypes.ICapeThermoMaterial).GetOverallProp("flow",
-                                                                                                           "mole"))
+                                                                                                           self.quantity_basis))
         tops_temperature = \
             self.doc.GetStream('2').QueryInterface(coTypes.ICapeThermoMaterial).GetOverallProp("temperature", "")[0]
         tops_pressure = \
             self.doc.GetStream('2').QueryInterface(coTypes.ICapeThermoMaterial).GetOverallProp("pressure", "")[0]
 
         bottoms_flows = np.array(self.doc.GetStream('3').QueryInterface(coTypes.ICapeThermoMaterial).GetOverallProp("flow",
-                                                                                                              "mole"))
+                                                                                                              self.quantity_basis))
         bottoms_temperature = \
             self.doc.GetStream('3').QueryInterface(coTypes.ICapeThermoMaterial).GetOverallProp("temperature", "")[0]
         bottoms_pressure = \
@@ -73,9 +74,9 @@ class SimulatorDC:
                                                                   bottoms_pressure]
 
     def get_outputs(self):
-        tops_flow = self.doc.GetStream('2').QueryInterface(coTypes.ICapeThermoMaterial).GetOverallProp("flow", "mole")
+        tops_flow = self.doc.GetStream('2').QueryInterface(coTypes.ICapeThermoMaterial).GetOverallProp("flow", self.quantity_basis)
         bottoms_flow = self.doc.GetStream('3').QueryInterface(coTypes.ICapeThermoMaterial).GetOverallProp("flow",
-                                                                                                          "mole")
+                                                                                                          self.quantity_basis)
         TAC = self.doc.GetUnit('Column_1').QueryInterface(coTypes.ICapeUtilities).Parameters.QueryInterface(
             coTypes.ICapeCollection). \
             Item("Total Annual Cost").QueryInterface(coTypes.ICapeParameter).value

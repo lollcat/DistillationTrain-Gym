@@ -154,15 +154,15 @@ class Worker_reward:
         # target
         # note we don't use the actual done values because the max function is doing a version of this
         target_next_state_value = self.gamma * (tf.math.maximum(Q_value_top, 0) + tf.math.maximum(Q_value_bottoms, 0))
-        with tf.GradientTape(persistent=True) as tape:
+        with tf.GradientTape() as tape0, tf.GradientTape(persistent=True) as tape1:
 
-            tape.watch(self.local_param_model.trainable_weights)
+            tape0.watch(self.local_param_model.trainable_weights)
             predict_param = self.local_param_model(state)
             Q_value = tf.keras.backend.sum(self.local_dqn_model([state, predict_param]))
             loss_param = - Q_value
 
             # Q_net part
-            tape.watch(self.local_dqn_model.trainable_weights)
+            tape1.watch(self.local_dqn_model.trainable_weights)
             # compute Q net updates
             # first for TAC and revenue which is simple
             revenue_prediction, TAC_prediction, future_reward_prediction = \
@@ -173,12 +173,12 @@ class Worker_reward:
             loss_next_state_value = tf.keras.losses.MSE(tf.convert_to_tensor(target_next_state_value, np.float32),
                                                         future_reward_prediction)
 
-        gradient_param = tape.gradient(loss_param, self.local_param_model.trainable_weights)
-        gradient_next_state_value = tape.gradient(loss_next_state_value, self.local_dqn_model.trainable_weights,
+        gradient_param = tape0.gradient(loss_param, self.local_param_model.trainable_weights)
+        gradient_next_state_value = tape1.gradient(loss_next_state_value, self.local_dqn_model.trainable_weights,
                                                   unconnected_gradients=tf.UnconnectedGradients.ZERO)  # not including revenue and loss
-        gradient_revenue = tape.gradient(loss_revenue, self.local_dqn_model.trainable_weights,
+        gradient_revenue = tape1.gradient(loss_revenue, self.local_dqn_model.trainable_weights,
                                          unconnected_gradients=tf.UnconnectedGradients.ZERO)
-        gradient_TAC = tape.gradient(loss_TAC, self.local_dqn_model.trainable_weights,
+        gradient_TAC = tape1.gradient(loss_TAC, self.local_dqn_model.trainable_weights,
                                      unconnected_gradients=tf.UnconnectedGradients.ZERO)
         gradient_dqn_total = [dqn_grad + gradient_TAC[i] + gradient_revenue[i]
                               for i, dqn_grad in enumerate(gradient_next_state_value)]

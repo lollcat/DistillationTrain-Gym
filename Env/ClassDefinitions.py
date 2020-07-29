@@ -11,7 +11,7 @@ class Stream:
         """
         assert type(flows) == np.ndarray
         self.number = number
-        self.flows = flows
+        self.flows = np.round(flows, 6)
         self.temperature = temperature
         self.pressure = pressure
 
@@ -61,6 +61,11 @@ class State:
     def submit_stream(self):
         self.final_outlet_streams.append(self.streams[0])
         self.streams.popleft()
+        if self.n_streams == 0:
+            return True
+        else:
+            self.create_state()
+            return False
 
     @property
     def n_streams(self):
