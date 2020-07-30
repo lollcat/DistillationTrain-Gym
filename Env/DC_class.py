@@ -87,7 +87,7 @@ class SimulatorDC:
         reboiler_duty = self.doc.GetUnit('Column_1').QueryInterface(coTypes.ICapeUtilities).Parameters.QueryInterface(
             coTypes.ICapeCollection). \
             Item("Reboiler duty").QueryInterface(coTypes.ICapeParameter)
-        return TAC, condenser_duty, reboiler_duty
+        return TAC*1000, condenser_duty, reboiler_duty  # TAC is in k$ so need to adjust
 
     def get_unit_inputs(self):
         n_stages = self.doc.GetUnit('Column_1').QueryInterface(coTypes.ICapeUtilities).Parameters.QueryInterface(

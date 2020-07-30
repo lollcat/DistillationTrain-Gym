@@ -6,6 +6,8 @@ from Env.STANDARD_CONFIG import CONFIG
 import numpy as np
 from tensorflow.keras.models import clone_model
 import tensorflow as tf
+from Utils.OrnsteinNoise import OUActionNoise
+
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 standard_args = CONFIG(1).get_config()
@@ -31,6 +33,7 @@ class Agent:
         self.summary_writer = summary_writer
         self.step = 0
         self.tau = tau
+        self.noise = OUActionNoise(mu=np.zeros(env.continuous_action_space.shape[0]))
 
     def update_target_networks(self):
         self.param_model_target.set_weights([tf.math.multiply(local_weight, self.tau) +
@@ -51,8 +54,9 @@ class Agent:
             while not done:
                 self.step += 1
                 state = self.env.State.state.copy()
-                action_continuous = np.clip(self.param_model.predict(state[np.newaxis, :]) + 0.3 *
-                                            np.random.normal(0, 1, size=self.env.continuous_action_space.shape[0]),
+                noise = self.noise()
+                #noise =  0.3 * np.random.normal(0, 1, size=self.env.continuous_action_space.shape[0])
+                action_continuous = np.clip(self.param_model.predict(state[np.newaxis, :]) + noise,
                                             a_min=-1, a_max=1)
                 Q_value = np.sum(self.critic_model.predict([state[np.newaxis, :], action_continuous]), axis=0)
                 if state[:, 0: self.env.n_components].max()*self.env.State.flow_norm <= self.env.min_total_flow*1.1:
@@ -84,7 +88,8 @@ class Agent:
                         f"(state: {state[:, 0:self.env.n_components]}" \
                                                               f"tops: {tops_state[:, 0:self.env.n_components]}" \
                                                               f"bottoms: {bottoms_state[:, 0:self.env.n_components]}"
-                    self.memory.add(
+                    if info is {}:  # don't want to store failed solves
+                        self.memory.add(
                         (state, action_continuous, action_discrete, annual_revenue, TAC, tops_state, bottoms_state,
                          1 - done))
                 if len(self.memory.buffer) > self.batch_size:
@@ -193,7 +198,8 @@ class Agent:
             i +=1
             state = self.env.State.state.copy()
             action_continuous = self.param_model.predict(state[np.newaxis, :])
-            Q_value = np.sum(self.critic_model.predict([state[np.newaxis, :], action_continuous]), axis=0)
+            Q_values = self.critic_model.predict([state[np.newaxis, :], action_continuous])
+            Q_value = np.sum(Q_values, axis=0)
             if state[:, 0: self.env.n_components].max() * self.env.State.flow_norm <= self.env.min_total_flow * 1.1:
                 # must submit if there is not a lot of flow, add bit of extra margin to prevent errors
                 action_discrete = 1
@@ -208,4 +214,4 @@ class Agent:
             tops_state, bottoms_state, annual_revenue, TAC, done, info = self.env.step(action)
             reward = annual_revenue + TAC
             total_reward += reward
-            print(f"step {i}: \n annual_revenue: {annual_revenue}, TAC: {TAC} \n Q_value {Q_value}, reward {reward}")
+            print(f"step {i}: \n annual_revenue: {annual_revenue}, TAC: {TAC} \n Q_values {Q_values}, reward {reward}")
