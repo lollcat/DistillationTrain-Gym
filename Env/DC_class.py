@@ -28,6 +28,7 @@ class SimulatorDC:
         self.max_pressure = self.doc.GetUnit('Valve_1').QueryInterface(
             coTypes.ICapeUtilities).Parameters.QueryInterface(coTypes.ICapeCollection).Item(
             "Pressure").QueryInterface(coTypes.ICapeParameter).value
+        self.compound_names = self.doc.GetStream('1').QueryInterface(coTypes.ICapeThermoCompounds).GetCompoundList()[0]
 
     def import_file(self):
         self.doc.Import(self.doc_path)

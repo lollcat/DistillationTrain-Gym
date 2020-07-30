@@ -10,8 +10,8 @@ physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 standard_args = CONFIG(1).get_config()
 class Agent:
-    def __init__(self, summary_writer, total_episodes=500, env=DC_Gym(*standard_args), actor_lr=0.001, critic_lr=0.002,
-                 batch_size=32, mem_length=1000, gamma=0.99, tau=0.01):
+    def __init__(self, summary_writer, total_episodes=500, env=DC_Gym(*standard_args), actor_lr=0.0001, critic_lr=0.001,
+                 batch_size=32, mem_length=1000, gamma=0.99, tau=0.001):
         assert batch_size < mem_length
         self.total_episodes = total_episodes
         self.env = env
@@ -59,16 +59,18 @@ class Agent:
                     # must submit if there is not a lot of flow, add bit of extra margin to prevent errors
                     action_discrete = 1
                 else:
-                    action_discrete = self.eps_greedy(Q_value, i, int(self.total_episodes*3/4))
+                    action_discrete = self.eps_greedy(Q_value, i, round(self.total_episodes*3/4))
                 action_continuous = action_continuous[0]
                 action = action_continuous, action_discrete
+                # now take action
+                tops_state, bottoms_state, annual_revenue, TAC, done, info = self.env.step(action)
                 with self.summary_writer.as_default():
                     tf.summary.scalar('n_stages', action_continuous[0], step=self.step)
                     tf.summary.scalar('reflux', action_continuous[1], step=self.step)
                     tf.summary.scalar('reboil', action_continuous[2], step=self.step)
                     tf.summary.scalar('pressure drop ratio', action_continuous[3], step=self.step)
-                # now take action
-                tops_state, bottoms_state, annual_revenue, TAC, done, info = self.env.step(action)
+                    tf.summary.scalar('TAC', TAC, step=self.step)
+                    tf.summary.scalar('revenue', annual_revenue, step=self.step)
                 reward = annual_revenue + TAC
                 total_reward += reward
                 if action_discrete == 0:  # seperating action
@@ -76,8 +78,6 @@ class Agent:
                                 tops_state[:, 0:self.env.n_components] +
                                 bottoms_state[:, 0:self.env.n_components]))
                                              / np.maximum(state[:, 0:self.env.n_components], 0.1)) # 0 to prevent divide by 0
-                    #if mass_balance_rel_error.max() >= 0.05:
-                    #    print("should catch in breakpoint")
                     assert mass_balance_rel_error.max() < 0.05, \
                         f"Max error: {mass_balance_rel_error.max()}"\
                         f"MB rel error: {mass_balance_rel_error}" \
@@ -91,7 +91,7 @@ class Agent:
                     self.learn()
 
             with self.summary_writer.as_default():
-                tf.summary.scalar('total score', total_reward, step=self.step)
+                tf.summary.scalar('total score', total_reward, step=i)
             self.history.append(total_reward)
 
 
@@ -169,14 +169,14 @@ class Agent:
         self.critic_optimizer.apply_gradients(zip(gradient_dqn_total, self.critic_model.trainable_weights))
         self.update_target_networks()
 
-    def eps_greedy(self, Q_value, current_step, stop_step, max_prob=1, min_prob=0):
+    def eps_greedy(self, Q_value, current_step, stop_step, max_prob=1, min_prob=0.05):
         if self.env.current_step is 0:  # must at least seperate first stream
             return 0
         else:
             explore_threshold = max(max_prob - current_step / stop_step * (max_prob - min_prob), min_prob)
             random = np.random.rand()
             if random < explore_threshold:  # explore probabilities to bias in direction of seperating a stuff
-                action_discrete = np.random.choice(a=[0, 1], p=[0.5, 0.5])
+                action_discrete = np.random.choice(a=[0, 1], p=[0.7, 0.3])
             else:  # exploit
                 if Q_value > 0:  #  seperate
                     action_discrete = 0
@@ -184,3 +184,28 @@ class Agent:
                     action_discrete = 1
             return action_discrete
 
+    def test_run(self):
+        state = self.env.reset()
+        done = False
+        total_reward = 0
+        i = 0
+        while not done:
+            i +=1
+            state = self.env.State.state.copy()
+            action_continuous = self.param_model.predict(state[np.newaxis, :])
+            Q_value = np.sum(self.critic_model.predict([state[np.newaxis, :], action_continuous]), axis=0)
+            if state[:, 0: self.env.n_components].max() * self.env.State.flow_norm <= self.env.min_total_flow * 1.1:
+                # must submit if there is not a lot of flow, add bit of extra margin to prevent errors
+                action_discrete = 1
+            else:
+                if Q_value > 0:
+                    action_discrete = 0
+                else:
+                    action_discrete = 1
+            action_continuous = action_continuous[0]
+            action = action_continuous, action_discrete
+            # now take action
+            tops_state, bottoms_state, annual_revenue, TAC, done, info = self.env.step(action)
+            reward = annual_revenue + TAC
+            total_reward += reward
+            print(f"step {i}: \n annual_revenue: {annual_revenue}, TAC: {TAC} \n Q_value {Q_value}, reward {reward}")

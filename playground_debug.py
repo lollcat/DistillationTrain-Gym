@@ -1,4 +1,4 @@
-DEBUG = 0
+DEBUG = 1
 if DEBUG == 0:
     from Env.DC_gym import DC_Gym
     from Nets.Critic_simple import Critic

@@ -2,4 +2,5 @@
 *.pyc
 *.xml
 *.iml
-*checkpoint.ipynb
+*.ipynb
+*.png

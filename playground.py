@@ -1,9 +1,26 @@
+# average runtime (123 episodes/66 min) is less than 2 minutes per episode
+# 3 min, for 2 workers to do 20 (24 ended up being the total) steps = 0.125 min/ep
+# 4 doing 40 (50) steps == 5.46 min. = 0.1092 min/ep
+# 1 doing 20 steps == 2.87 min = 0.14345
+"""PRIMARY CONFIG"""
+agent_config = 1
+max_global_steps = 20
+
+
 import tensorflow as tf
-from Env.DC_gym_reward import DC_gym_reward as DC_Gym
+if agent_config == 0:
+    CONFIG_string = "testing in playground"
+    from Env.DC_gym import DC_Gym
+    from Nets.Critic_simple import Critic
+    from Workers.worker import Worker
+else:
+    CONFIG_string = "Simple State, Split reward"
+    from Env.DC_gym_reward import DC_gym_reward as DC_Gym
+    from Nets.Critic import Critic
+    from Workers.worker_reward import Worker_reward as Worker
 from Env.STANDARD_CONFIG import CONFIG
-from Nets.Critic import Critic
 from Nets.P_actor import ParameterAgent
-from Workers.worker_reward import Worker_reward as Worker
+
 import matplotlib.pyplot as plt
 
 import datetime
@@ -18,10 +35,8 @@ import itertools
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-"""CONFIG"""
-CONFIG_string = "worker split reward, simplified State"
+"""SECONDARY CONFIG"""
 standard_args = CONFIG(1).get_config()
-max_global_steps = 6*10
 alpha = 0.0001
 beta = alpha*10
 steps_per_update = 5
@@ -35,14 +50,14 @@ num_workers = multiprocessing.cpu_count()
 global_counter = itertools.count()
 returns_list = []
 
-param_model, param_optimizer = ParameterAgent(beta, n_continuous_actions, state_shape).build_network()
-dqn_model, dqn_optimizer = Critic(alpha, n_continuous_actions, state_shape,).build_network()
+param_model, param_optimizer = ParameterAgent(alpha, n_continuous_actions, state_shape).build_network()
+dqn_model, dqn_optimizer = Critic(beta, n_continuous_actions, state_shape,).build_network()
 
 current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 log_dir = 'logs/' + current_time + CONFIG_string
 summary_writer = tf.summary.create_file_writer(log_dir)
 
-start_time = time.time()
+
 workers = []
 for worker_id in range(num_workers):
     worker = Worker(
@@ -63,6 +78,7 @@ for worker_id in range(num_workers):
 
 coord = tf.train.Coordinator()
 worker_fn = lambda worker_: worker_.run(coord)
+start_time = time.time()
 with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
     executor.map(worker_fn, workers, timeout=40)
 """

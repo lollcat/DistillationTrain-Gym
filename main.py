@@ -1,7 +1,7 @@
 # average runtime (123 episodes/66 min) is less than 2 minutes per episode
 """PRIMARY CONFIG"""
 agent_config = 1
-max_global_steps = 6*10
+max_global_steps = 6*299
 
 
 import tensorflow as tf
@@ -54,7 +54,7 @@ current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 log_dir = 'logs/' + current_time + CONFIG_string
 summary_writer = tf.summary.create_file_writer(log_dir)
 
-start_time = time.time()
+
 workers = []
 for worker_id in range(num_workers):
     worker = Worker(
@@ -75,6 +75,7 @@ for worker_id in range(num_workers):
 
 coord = tf.train.Coordinator()
 worker_fn = lambda worker_: worker_.run(coord)
+start_time = time.time()
 with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
     executor.map(worker_fn, workers, timeout=40)
 """

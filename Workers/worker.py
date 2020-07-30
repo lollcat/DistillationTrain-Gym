@@ -66,7 +66,11 @@ class Worker:
                                             a_min=-1, a_max=1)
         # get discrete action
         Q_value = self.local_dqn_model.predict([state, action_continuous])
-        action_discrete = self.eps_greedy(Q_value, current_step, stop_step)
+        if state[:, 0: self.env.n_components].max() * self.env.State.flow_norm <= self.env.min_total_flow * 1.1:
+            # must submit if there is not a lot of flow, add bit of extra margin to prevent errors
+            action_discrete = 1
+        else:
+            action_discrete = self.eps_greedy(Q_value, current_step, stop_step)
 
         action_continuous = action_continuous[0]  # take it back to the correct shape
         return action_continuous, action_discrete

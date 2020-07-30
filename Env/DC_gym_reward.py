@@ -15,11 +15,7 @@ class DC_gym_reward(DC_Gym):
         real_continuous_actions = self.get_real_continuous_actions(continuous_actions)
         if discrete_action == 1:  # submit
             self.current_step += 1
-            done = self.State.submit_stream()
-            if done or self.State.final_outlet_streams == self.max_outlet_streams:
-                done = True
-            else:
-                done = False
+            done = self.State.submit_stream()  # if this results in 0 outlet streams then done
             info = {}
             tops_state = "NA"
             bottoms_state = "NA"
@@ -61,8 +57,9 @@ class DC_gym_reward(DC_Gym):
         tops_info, bottoms_info = self.get_outlet_info()
         tops_flow, tops_temperature, tops_pressure = tops_info
         bottoms_flow, bottoms_temperature, bottoms_pressure = bottoms_info
-        tops_state, bottoms_state = self.State.update_state(Stream(self.State.n_streams, tops_flow, tops_temperature, tops_pressure),
-                                        Stream(self.State.n_streams+1, bottoms_flow, bottoms_temperature, bottoms_pressure))
+        tops = Stream(self.State.n_total_streams() + 1, tops_flow, tops_temperature, tops_pressure)
+        bottoms = Stream(self.State.n_total_streams() + 2, bottoms_flow, bottoms_temperature, bottoms_pressure)
+        tops_state, bottoms_state = self.State.update_state(tops, bottoms)
 
         annual_revenue = self.stream_value(tops_flow) + self.stream_value(bottoms_flow) - self.stream_value(selected_stream.flows)
         mass_balance_rel_error = np.absolute(((selected_stream.flows/self.State.flow_norm - (
@@ -72,7 +69,8 @@ class DC_gym_reward(DC_Gym):
         if mass_balance_rel_error.max() >= 0.05:
             print("should catch in breakpoint")
         assert mass_balance_rel_error.max() < 0.05, f"Max error: {mass_balance_rel_error.max()}"
-        if self.State.n_streams == self.max_outlet_streams or self.State.final_outlet_streams == self.max_outlet_streams:
+
+        if self.State.n_streams + self.State.n_outlet_streams >= self.max_outlet_streams:
             # this just sets a cap on where the episode must end
             # either all the streams are outlets in which case n_streams is zero
             # (this only happens via submitted steam action so doen't come into play in this part of the step)
@@ -80,6 +78,8 @@ class DC_gym_reward(DC_Gym):
             done = True
         else:
             done = False
+        self.State.add_column_data(selected_stream.number, tops.number, bottoms.number,
+                               (n_stages, reflux_ratio, reboil_ratio, tops_pressure), TAC)
         info = {}
         return tops_state, bottoms_state, annual_revenue, -TAC, done, info
 

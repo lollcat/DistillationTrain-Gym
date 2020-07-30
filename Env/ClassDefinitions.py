@@ -15,15 +15,24 @@ class Stream:
         self.temperature = temperature
         self.pressure = pressure
 
-
+class Column:
+    def __init__(self, in_number, tops_number, bottoms_number, actions, TAC):
+        self.inlet_number = in_number
+        self.tops_number = tops_number
+        self.bottoms_number = bottoms_number
+        self.n_stages = actions[0]
+        self.reflux_ratio = actions[1]
+        self.reboil_ratio = actions[2]
+        self.inlet_pressure = actions[3]
+        self.TAC = TAC
 
 class State:
     """
-    This state doesn't include a shuffler
+    Keeps track of the state as well as the flowsheet layout
     For now the state includes temperature and pressure as added straight to the end of the stream vector
     """
     def __init__(self, feed_stream, max_streams):
-        self.streams = deque([feed_stream])
+        self.streams = deque([feed_stream]) # this is for the state
         self.max_streams = max_streams
         self.temp_norm = feed_stream.temperature
         self.pressure_norm = feed_stream.pressure
@@ -31,6 +40,8 @@ class State:
         self.state = np.zeros((1, len(feed_stream.flows) + 2))  # +2 is for T & P
         self.create_state()
         self.final_outlet_streams = []
+        self.all_streams = [feed_stream]  # this is a record of all streams
+        self.column_data = []  # contains tuple of (inlet stream no, tops stream no, bottoms stream no, (actions), TAC)
 
     def create_state(self):
         self.state = np.array([list(self.streams[0].flows/self.flow_norm) +
@@ -46,6 +57,8 @@ class State:
         self.streams.popleft()
         self.streams.append(tops)
         self.streams.append(bottoms)
+        self.all_streams.append(tops)
+        self.all_streams.append(bottoms)
 
     def update_state(self, tops, bottoms):
         self.update_streams(tops, bottoms)
@@ -67,6 +80,9 @@ class State:
             self.create_state()
             return False
 
+    def add_column_data(self, in_number, tops_number, bottoms_number, actions, TAC):
+        self.column_data.append(Column(in_number, tops_number, bottoms_number, actions, TAC))
+
     @property
     def n_streams(self):
         return len(self.streams)
@@ -74,3 +90,6 @@ class State:
     @property
     def n_outlet_streams(self):
         return len(self.final_outlet_streams)
+
+    def n_total_streams(self):
+        return len(self.all_streams)
