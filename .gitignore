@@ -4,3 +4,5 @@
 *.iml
 *.ipynb
 *.png
+*idea
+*.ipynb
