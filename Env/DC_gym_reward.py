@@ -10,7 +10,6 @@ class DC_gym_reward(DC_Gym):
         super().__init__(*args, **kwargs)
 
     def step(self, action):
-        self.import_file()  # current workaround is to reset the file before each solve
         continuous_actions, discrete_action = action
         real_continuous_actions = self.get_real_continuous_actions(continuous_actions)
         if discrete_action == 1:  # submit
@@ -22,7 +21,7 @@ class DC_gym_reward(DC_Gym):
             revenue = 0
             TAC = 0
             return tops_state, bottoms_state, revenue, TAC, done, info
-
+        self.import_file()  # current workaround is to reset the file before each solve
         # put the selected stream (flows, temperature, pressure) as the input to a new column
         selected_stream = self.State.streams[0]
         assert selected_stream.flows.max() > self.min_total_flow
@@ -39,8 +38,11 @@ class DC_gym_reward(DC_Gym):
         if sucessful_solve is False:  # This is currently just telling the
             self.failed_solves += 1
             self.error_counter["error_solves"] += 1
-            if self.failed_solves >= 2: # reset if we fail twice
+            TAC = 0
+            revenue = 0
+            if self.failed_solves >= 3: # reset if we fail 3 times
                 done = True
+                TAC = -100000  # to discourage these actions
             else:
                 done = False
             info = {"failed solve": 1}
@@ -48,7 +50,7 @@ class DC_gym_reward(DC_Gym):
             # basically like returning state as tops, 0 as bottoms because nothing has happened in the seperation
             tops = state.copy()
             bottoms = np.zeros(tops.shape)
-            return tops, bottoms, 0, 0, done, info
+            return tops, bottoms, revenue, TAC, done, info
 
         self.current_step += 1  # if there is a sucessful solve then step the counter
         # TAC includes operating costs so we actually don't need these duties
@@ -67,8 +69,8 @@ class DC_gym_reward(DC_Gym):
                 bottoms_state[:, 0:self.n_components]))
                                   / np.maximum(selected_stream.flows, 0.01)/self.State.flow_norm)) # max to prevent divide by 0
         if mass_balance_rel_error.max() >= 0.05:
-            print("should catch in breakpoint")
-        assert mass_balance_rel_error.max() < 0.05, f"Max error: {mass_balance_rel_error.max()}"
+            print("MB error!!!")
+        #assert mass_balance_rel_error.max() < 0.05, f"Max error: {mass_balance_rel_error.max()}"
 
         if self.State.n_streams + self.State.n_outlet_streams >= self.max_outlet_streams:
             # this just sets a cap on where the episode must end

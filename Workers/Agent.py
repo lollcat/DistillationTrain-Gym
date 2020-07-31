@@ -54,8 +54,8 @@ class Agent:
             while not done:
                 self.step += 1
                 state = self.env.State.state.copy()
-                noise = self.noise()
-                #noise =  0.3 * np.random.normal(0, 1, size=self.env.continuous_action_space.shape[0])
+                #noise = self.noise()
+                noise =  0.3 * np.random.normal(0, 1, size=self.env.continuous_action_space.shape[0])
                 action_continuous = np.clip(self.param_model.predict(state[np.newaxis, :]) + noise,
                                             a_min=-1, a_max=1)
                 Q_value = np.sum(self.critic_model.predict([state[np.newaxis, :], action_continuous]), axis=0)
@@ -68,6 +68,8 @@ class Agent:
                 action = action_continuous, action_discrete
                 # now take action
                 tops_state, bottoms_state, annual_revenue, TAC, done, info = self.env.step(action)
+                reward = annual_revenue + TAC
+                total_reward += reward
                 with self.summary_writer.as_default():
                     tf.summary.scalar('n_stages', action_continuous[0], step=self.step)
                     tf.summary.scalar('reflux', action_continuous[1], step=self.step)
@@ -75,25 +77,29 @@ class Agent:
                     tf.summary.scalar('pressure drop ratio', action_continuous[3], step=self.step)
                     tf.summary.scalar('TAC', TAC, step=self.step)
                     tf.summary.scalar('revenue', annual_revenue, step=self.step)
-                reward = annual_revenue + TAC
-                total_reward += reward
+
                 if action_discrete == 0:  # seperating action
                     mass_balance_rel_error = np.absolute((state[:, 0:self.env.n_components] - (
                                 tops_state[:, 0:self.env.n_components] +
                                 bottoms_state[:, 0:self.env.n_components]))
                                              / np.maximum(state[:, 0:self.env.n_components], 0.1)) # 0 to prevent divide by 0
-                    assert mass_balance_rel_error.max() < 0.05, \
-                        f"Max error: {mass_balance_rel_error.max()}"\
-                        f"MB rel error: {mass_balance_rel_error}" \
+                    mass_balance_check = True
+                    # assert mass_balance_rel_error.max() < 0.05
+                    if mass_balance_rel_error.max() > 0.05:
+                        mass_balance_check = False
+                        print(
+                        f"Max error: {mass_balance_rel_error.max()} \n"\
+                        f"MB rel error: {mass_balance_rel_error} \n" \
                         f"(state: {state[:, 0:self.env.n_components]}" \
                                                               f"tops: {tops_state[:, 0:self.env.n_components]}" \
-                                                              f"bottoms: {bottoms_state[:, 0:self.env.n_components]}"
-                    if info is {}:  # don't want to store failed solves
+                                                              f"bottoms: {bottoms_state[:, 0:self.env.n_components]}")
+                    if (len(info) is 0 or (len(info) is 1 and done is True)) and mass_balance_check is True:  # don't want to store failed solves
+                        # but if we have max_number of failed solves then we add negative reward (TAC) to discourage this action
                         self.memory.add(
                         (state, action_continuous, action_discrete, annual_revenue, TAC, tops_state, bottoms_state,
                          1 - done))
-                if len(self.memory.buffer) > self.batch_size:
-                    self.learn()
+                    if len(self.memory.buffer) > self.batch_size:
+                        self.learn()
 
             with self.summary_writer.as_default():
                 tf.summary.scalar('total score', total_reward, step=i)
@@ -174,14 +180,14 @@ class Agent:
         self.critic_optimizer.apply_gradients(zip(gradient_dqn_total, self.critic_model.trainable_weights))
         self.update_target_networks()
 
-    def eps_greedy(self, Q_value, current_step, stop_step, max_prob=1, min_prob=0.05):
+    def eps_greedy(self, Q_value, current_step, stop_step, max_prob=0.5, min_prob=0.01):
         if self.env.current_step is 0:  # must at least seperate first stream
             return 0
         else:
             explore_threshold = max(max_prob - current_step / stop_step * (max_prob - min_prob), min_prob)
             random = np.random.rand()
-            if random < explore_threshold:  # explore probabilities to bias in direction of seperating a stuff
-                action_discrete = np.random.choice(a=[0, 1], p=[0.7, 0.3])
+            if random < explore_threshold:
+                action_discrete = np.random.choice(a=[0, 1], p=[0.5, 0.5])
             else:  # exploit
                 if Q_value > 0:  #  seperate
                     action_discrete = 0

@@ -15,9 +15,10 @@ current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 log_dir = 'BatchMemory_Agent/' + 'logs/' + " with targets" + current_time
 summary_writer = tf.summary.create_file_writer(log_dir)
 
+#TODO mass balance problem - potentially put limits on pressure drop action if it is from this
 #Agent = Agent(summary_writer=summary_writer, total_episodes=1, mem_length=3, batch_size=2)
-Agent = Agent(summary_writer=summary_writer, total_episodes=100, mem_length=200, batch_size=16)
-#Agent = Agent(summary_writer=summary_writer, total_episodes=350, mem_length=1000, batch_size=64)
+#Agent = Agent(summary_writer=summary_writer, total_episodes=200, mem_length=1000, batch_size=32)
+Agent = Agent(summary_writer=summary_writer, total_episodes=500, mem_length=3000, batch_size=64)
 
 begin = time.time()
 Agent.run_episodes()
@@ -37,3 +38,4 @@ plt.show()
 Visualise = Visualiser(Agent.env)
 G = Visualise.visualise()
 G.write_png("current_time"+".png")
+print(f"""failed solves: {Agent.env.error_counter["error_solves"]}/{Agent.env.error_counter["total_solves"]}""")
