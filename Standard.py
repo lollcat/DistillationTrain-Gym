@@ -2,7 +2,7 @@
 # runtime per episode (5.5 min / 5 episode average) almost 1 min per episode
 # runtime per episode (180 min for 100 episodes) - note there have been tweaks that may results in different length episodes
 # 9.65 hours for 350 episodes
-# tensorboard --logdir BatchMemory_Agent/logs
+# tensorboard --logdir BatchMemory_Agent/logstensorboard --logdir BatchMemory_Agent/logs
 from Workers.Agent import Agent
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,9 +16,10 @@ log_dir = 'BatchMemory_Agent/' + 'logs/' + " with targets" + current_time
 summary_writer = tf.summary.create_file_writer(log_dir)
 
 #TODO mass balance problem - potentially put limits on pressure drop action if it is from this
-#Agent = Agent(summary_writer=summary_writer, total_episodes=1, mem_length=3, batch_size=2)
+Agent = Agent(summary_writer=summary_writer, total_episodes=50, mem_length=100, batch_size=10)
 #Agent = Agent(summary_writer=summary_writer, total_episodes=200, mem_length=1000, batch_size=32)
-Agent = Agent(summary_writer=summary_writer, total_episodes=500, mem_length=3000, batch_size=64)
+#Agent = Agent(summary_writer=summary_writer, total_episodes=500, mem_length=3000, batch_size=64)
+
 
 begin = time.time()
 Agent.run_episodes()

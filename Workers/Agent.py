@@ -7,18 +7,22 @@ import numpy as np
 from tensorflow.keras.models import clone_model
 import tensorflow as tf
 from Utils.OrnsteinNoise import OUActionNoise
+import pickle
+import time
 
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 standard_args = CONFIG(1).get_config()
 class Agent:
     def __init__(self, summary_writer, total_episodes=500, env=DC_Gym(*standard_args), actor_lr=0.0001, critic_lr=0.001,
-                 batch_size=32, mem_length=1000, gamma=0.99, tau=0.001):
+                 batch_size=32, mem_length=1000, gamma=0.99, tau=0.001, use_old_memories=True):
         assert batch_size < mem_length
         self.total_episodes = total_episodes
         self.env = env
         self.batch_size = batch_size
         self.memory = Memory(max_size=mem_length)
+        if use_old_memories is True:
+            self.load_memory()
         self.param_model, self.param_optimizer = \
             ParameterAgent(actor_lr, env.continuous_action_space.shape[0], env.observation_space.shape).build_network()
         self.critic_model, self.critic_optimizer = \
@@ -110,6 +114,8 @@ class Agent:
                 print(f"Average reward of last {round(self.total_episodes/10)} episodes: "
                       f"{np.mean(self.history[-round(self.total_episodes/10):])}")
                 print(f"episode {i}/{self.total_episodes}")
+
+        self.save_memory()
 
     def learn(self):
         # now sample from batch & train
@@ -221,3 +227,14 @@ class Agent:
             reward = annual_revenue + TAC
             total_reward += reward
             print(f"step {i}: \n annual_revenue: {annual_revenue}, TAC: {TAC} \n Q_values {Q_values}, reward {reward}")
+
+    def save_memory(self):
+        pickle.dump(self.memory, open("./memory_data/" + str(time.time()) + ".obj", "wb"))
+        pickle.dump(self.memory, open("./memory_data/memory.obj", "wb"))
+
+    def load_memory(self):
+        """
+        currently just always expanding memory.obj
+        """
+        old_memory = pickle.load(open("./memory_data/memory.obj", "rb"))
+        self.memory.buffer += old_memory
