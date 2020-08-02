@@ -1,12 +1,12 @@
 from Utils.memory import Memory
-from Nets_batch.Critic import Critic
-from Nets_batch.P_actor import ParameterAgent
+from DDPG.Nets_batch.Critic import Critic
+from DDPG.Nets_batch.P_actor import ParameterAgent
 from Env.DC_gym_reward import DC_gym_reward as DC_Gym
 from Env.STANDARD_CONFIG import CONFIG
 import numpy as np
 from tensorflow.keras.models import clone_model
 import tensorflow as tf
-from Utils.OrnsteinNoise import OUActionNoise
+from DDPG.Utils.OrnsteinNoise import OUActionNoise
 import pickle
 import time
 

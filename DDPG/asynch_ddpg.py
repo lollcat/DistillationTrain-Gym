@@ -8,15 +8,15 @@ import tensorflow as tf
 if agent_config == 0:
     CONFIG_string = "Simple State, Simple reward"
     from Env.DC_gym import DC_Gym
-    from Nets.Critic_simple import Critic
-    from Workers.worker import Worker
+    from DDPG.Nets.Critic_simple import Critic
+    from DDPG.Workers.worker import Worker
 else:
     CONFIG_string = "Simple State, Split reward"
     from Env.DC_gym_reward import DC_gym_reward as DC_Gym
-    from Nets.Critic import Critic
-    from Workers.worker_reward import Worker_reward as Worker
+    from DDPG.Nets.Critic import Critic
+    from DDPG.Workers.worker_reward import Worker_reward as Worker
 from Env.STANDARD_CONFIG import CONFIG
-from Nets.P_actor import ParameterAgent
+from DDPG.Nets.P_actor import ParameterAgent
 
 import matplotlib.pyplot as plt
 

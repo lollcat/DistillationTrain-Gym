@@ -1,16 +1,16 @@
 DEBUG = 1
 if DEBUG == 0:
     from Env.DC_gym import DC_Gym
-    from Nets.Critic_simple import Critic
+    from DDPG.Nets.Critic_simple import Critic
 else:
     from Env.DC_gym_reward import DC_gym_reward as DC_Gym
-    from Nets.Critic import Critic
+    from DDPG.Nets.Critic import Critic
 import tensorflow as tf
-from Workers.worker_reward_debug import debug_class
+from DDPG.Workers.worker_reward_debug import debug_class
 Worker = debug_class(DEBUG)
 from Env.STANDARD_CONFIG import CONFIG
 
-from Nets.P_actor import ParameterAgent
+from DDPG.Nets.P_actor import ParameterAgent
 
 import matplotlib.pyplot as plt
 

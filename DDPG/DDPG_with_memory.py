@@ -3,7 +3,7 @@
 # runtime per episode (180 min for 100 episodes) - note there have been tweaks that may results in different length episodes
 # 9.65 hours for 350 episodes
 # tensorboard --logdir BatchMemory_Agent/logstensorboard --logdir BatchMemory_Agent/logs
-from Workers.Agent import Agent
+from DDPG.Workers.Agent import Agent
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -12,7 +12,7 @@ import time
 from Utils.BFD_maker import Visualiser
 
 current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-log_dir = 'BatchMemory_Agent/' + 'logs/' + " with targets" + current_time
+log_dir = "DDPG/BatchMemory_Agent/" + 'logs/' + " with targets" + current_time
 summary_writer = tf.summary.create_file_writer(log_dir)
 
 #TODO mass balance problem - potentially put limits on pressure drop action if it is from this
