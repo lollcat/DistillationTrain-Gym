@@ -1,8 +1,8 @@
 def debug_class(worker_no):
     if worker_no == 0:
-        from DDPG.Workers.worker import Worker as Worker_original
+        from DDPG.Agent.worker import Worker as Worker_original
     else:
-        from DDPG.Workers.worker_reward import Worker_reward as Worker_original
+        from DDPG.Agent.worker_reward import Worker_reward as Worker_original
     class Worker(Worker_original):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)

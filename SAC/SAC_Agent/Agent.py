@@ -88,7 +88,7 @@ class Agent:
                                 tf.summary.scalar('n_stages', action_continuous[0], step=self.steps)
                                 tf.summary.scalar('reflux', action_continuous[1], step=self.steps)
                                 tf.summary.scalar('reboil', action_continuous[2], step=self.steps)
-                                tf.summary.scalar('log_pi', log_pi, step=self.steps)
+                                tf.summary.scalar('log_pi', log_pi[0][0], step=self.steps)
                                 tf.summary.scalar('pressure drop ratio', action_continuous[3], step=self.steps)
                                 tf.summary.scalar('TAC', TAC, step=self.steps)
                                 tf.summary.scalar('revenue', annual_revenue, step=self.steps)
@@ -97,8 +97,8 @@ class Agent:
                     self.learn()
 
             with self.summary_writer.as_default():
-                tf.summary.scalar("total score", total_score, self.steps)
-                tf.summary.scalar("episode length", current_step, self.steps)
+                tf.summary.scalar("total score", total_score, ep)
+                tf.summary.scalar("episode length", current_step, ep)
             self.total_scores.append(total_score)
         self.save_memory()
 

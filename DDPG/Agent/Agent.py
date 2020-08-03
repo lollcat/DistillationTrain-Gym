@@ -61,7 +61,7 @@ class Agent:
                 current_step += 1
                 state = self.env.State.state.copy()
                 #noise = self.noise()
-                noise =  0.3 * np.random.normal(0, 1, size=self.env.continuous_action_space.shape[0])
+                noise = 0.3 * np.random.normal(0, 1, size=self.env.continuous_action_space.shape[0])
                 action_continuous = np.clip(self.param_model.predict(state[np.newaxis, :]) + noise,
                                             a_min=-1, a_max=1)
                 Q_value = np.sum(self.critic_model.predict([state[np.newaxis, :], action_continuous]), axis=0)

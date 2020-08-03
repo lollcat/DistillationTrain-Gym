@@ -6,7 +6,7 @@ else:
     from Env.DC_gym_simple_state import DC_gym_reward as DC_Gym
     from DDPG.Nets.Critic import Critic
 import tensorflow as tf
-from DDPG.Workers.worker_reward_debug import debug_class
+from DDPG.Agent.worker_reward_debug import debug_class
 Worker = debug_class(DEBUG)
 from Env.STANDARD_CONFIG import CONFIG
 
