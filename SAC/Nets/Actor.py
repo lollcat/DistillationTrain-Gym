@@ -38,6 +38,6 @@ class GaussianPolicy(Model):
         normal = tfp.distributions.MultivariateNormalDiag(mean, std)
         z = normal.sample()
         action = tf.math.tanh(z)
-        log_pi = normal.log_prob(z) - tf.reduce_sum(tf.math.log(1 - tf.math.square(action) + epsilon),
-                                                          axis=1, keepdims=True)
+        log_pi = normal.log_prob(z) - tf.reduce_sum(tf.math.log(1 - tf.math.square(action) + epsilon), axis=1)
+        log_pi = tf.expand_dims(log_pi, axis=1)
         return action, log_pi

@@ -1,8 +1,6 @@
-"""
-A bit of help from
-https://towardsdatascience.com/in-depth-review-of-soft-actor-critic-91448aba63d4
-"""
 # tensorboard --logdir logs
+# tensorboard --logdir SAC/logs
 from SAC.SAC_Agent.Agent import Agent
-SAC = Agent(total_eps=500)
+SAC = Agent(total_eps=200, batch_size=64, max_mem_length=1000)
+#SAC = Agent(total_eps=200, batch_size=2)
 SAC.run()

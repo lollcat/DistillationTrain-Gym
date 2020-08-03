@@ -13,7 +13,7 @@ class DC_Gym(SimulatorDC):
     this is currently just inherited by DC_gym_reward
     """
     def __init__(self, document_path, sales_prices,
-                 annual_operating_hours=8000, required_purity=0.95, simple_state=False):
+                 annual_operating_hours=8000, required_purity=0.95, simple_state=True):
         super().__init__(document_path)
         self.simple_state = simple_state
         self.sales_prices = sales_prices
@@ -113,8 +113,8 @@ class DC_Gym(SimulatorDC):
         tops_info, bottoms_info = self.get_outlet_info()
         tops_flow, tops_temperature, tops_pressure = tops_info
         bottoms_flow, bottoms_temperature, bottoms_pressure = bottoms_info
-        tops = Stream(self.State.n_total_streams() + 1, tops_flow, tops_temperature, tops_pressure)
-        bottoms = Stream(self.State.n_total_streams() + 2, bottoms_flow, bottoms_temperature, bottoms_pressure)
+        tops = Stream(self.State.n_total_streams + 1, tops_flow, tops_temperature, tops_pressure)
+        bottoms = Stream(self.State.n_total_streams + 2, bottoms_flow, bottoms_temperature, bottoms_pressure)
         next_state = self.State.update_state(tops, bottoms)
 
         annual_revenue = self.stream_value(tops_flow) + self.stream_value(bottoms_flow) - self.stream_value(selected_stream.flows)

@@ -55,8 +55,10 @@ class Agent:
             state = self.env.reset()
             done = False
             total_reward = 0
+            current_step = 0
             while not done:
                 self.step += 1
+                current_step += 1
                 state = self.env.State.state.copy()
                 #noise = self.noise()
                 noise =  0.3 * np.random.normal(0, 1, size=self.env.continuous_action_space.shape[0])
@@ -109,6 +111,7 @@ class Agent:
 
             with self.summary_writer.as_default():
                 tf.summary.scalar('total score', total_reward, step=i)
+                tf.summary.scalar("episode length", current_step, step=i)
             self.history.append(total_reward)
 
 

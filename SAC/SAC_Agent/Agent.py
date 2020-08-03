@@ -5,14 +5,14 @@ import tensorflow as tf
 import numpy as np
 import time
 import pickle
-from Env.DC_gym_simple_state import DC_gym_reward as DC_Gym
+from Env.DC_gym import DC_Gym
 from Env.STANDARD_CONFIG import CONFIG
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 standard_args = CONFIG(1).get_config()
 
 
-log_dir = 'logs/' + "SAC" + str(time.time())
+log_dir = './SAC/logs/' + str(time.time())
 summary_writer = tf.summary.create_file_writer(log_dir)
 
 
@@ -27,7 +27,7 @@ class Agent:
         # TODO try DDPG without max thingy
     Question: Can we use soft-Q as valid basis for whether or not to separate?
     """
-    def __init__(self, env=DC_Gym(*standard_args), total_eps=2e2, batch_size=64, alpha=0.2, max_mem_length=1e4, tau=0.005,
+    def __init__(self, env=DC_Gym(*standard_args, simple_state=True), total_eps=2e2, batch_size=64, alpha=0.5, max_mem_length=1e4, tau=0.005,
                  Q_lr=3e-4, policy_lr=3e-4, alpha_lr=3e-4, gamma=0.99, summary_writer=summary_writer, use_load_memory=False):
         self.env = env
         self.total_eps = int(total_eps)
@@ -76,7 +76,8 @@ class Agent:
                     action_discrete = self.eps_greedy(Q_value, ep)
                 action_continuous = np.squeeze(action_continuous, axis=0)
                 action = action_continuous, action_discrete
-                tops_state, bottoms_state, annual_revenue, TAC, done, info = self.env.step(action)
+                next_state, annual_revenue, TAC, done, info = self.env.step(action)
+                tops_state, bottoms_state = next_state
                 reward = annual_revenue + TAC  # TAC's sign is included in the env
                 total_score += reward
 
@@ -116,7 +117,7 @@ class Agent:
         next_Q2 = self.target_Q2([tops_states, tops_actions]) + self.target_Q2([bottoms_states, bottoms_actions])
         next_Q_target = tf.minimum(next_Q1, next_Q2) - self.alpha * (tops_log_pi + bottoms_log_pi)  # make target soft
         Q_expected = rewards + self.gamma * tf.maximum(next_Q_target, 0)  # cannot be negative as then would separate
-
+        assert Q_expected.shape == (self.batch_size, 1)
         with tf.GradientTape() as tape1, tf.GradientTape() as tape2:
             tape1.watch(self.Q1.trainable_variables)
             tape2.watch(self.Q2.trainable_variables)
@@ -184,12 +185,12 @@ class Agent:
 
 
     def save_memory(self):
-        pickle.dump(self.memory, open("./DDPG/memory_data/" + str(time.time()) + ".obj", "wb"))
-        pickle.dump(self.memory, open("./DDPG/memory_data/memory.obj", "wb"))
+        pickle.dump(self.memory, open("./SAC/memory_data/" + str(time.time()) + ".obj", "wb"))
+        pickle.dump(self.memory, open("./SAC/memory_data/memory.obj", "wb"))
 
     def load_memory(self):
         """
         currently just always expanding memory.obj
         """
-        old_memory = pickle.load(open("./DDPG/memory_data/memory.obj", "rb"))
+        old_memory = pickle.load(open("./SAC/memory_data/memory.obj", "rb"))
         self.memory.buffer += old_memory.buffer
