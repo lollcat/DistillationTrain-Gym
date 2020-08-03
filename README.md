@@ -6,6 +6,7 @@ Designing chemical engineering processes with reinforcement learning
 <br>
 Using COCO simulator and ChemSep to simulate hydrocarbon distillation train process synthesis problem
 <br>
+
 ## Agents
   - Soft Actor Critic (SAC), best performer
   - Deep Deterministic Policy Gradient (DDPG)
