@@ -88,6 +88,7 @@ class Agent:
                                 tf.summary.scalar('n_stages', action_continuous[0], step=self.steps)
                                 tf.summary.scalar('reflux', action_continuous[1], step=self.steps)
                                 tf.summary.scalar('reboil', action_continuous[2], step=self.steps)
+                                tf.summary.scalar('log_pi', log_pi, step=self.steps)
                                 tf.summary.scalar('pressure drop ratio', action_continuous[3], step=self.steps)
                                 tf.summary.scalar('TAC', TAC, step=self.steps)
                                 tf.summary.scalar('revenue', annual_revenue, step=self.steps)
@@ -194,3 +195,30 @@ class Agent:
         """
         old_memory = pickle.load(open("./SAC/memory_data/memory.obj", "rb"))
         self.memory.buffer += old_memory.buffer
+
+    def test_run(self):
+        state = self.env.reset()
+        done = False
+        total_score = 0
+        i = 0
+        while not done:
+            i +=1
+            state = self.env.State.state.copy()
+            mean, std = self.Actor(state)
+            action_continuous = tf.tanh(mean)
+            Q_value = tf.minimum(self.Q1([state, action_continuous]), self.Q2([state, action_continuous]))
+            if state[:, 0: self.env.n_components].max() * self.env.State.flow_norm <= self.env.min_total_flow * 1.1:
+                # must submit if there is not a lot of flow, add bit of extra margin to prevent errors
+                action_discrete = 1
+                print("submitted due to low flow")
+            else:
+                if Q_value > 0:
+                    action_discrete = 0  # seperate if positive reward predicted
+                else:
+                    action_discrete = 1
+            action_continuous = np.squeeze(action_continuous, axis=0)
+            action = action_continuous, action_discrete
+            next_state, annual_revenue, TAC, done, info = self.env.step(action)
+            reward = annual_revenue + TAC  # TAC's sign is included in the env
+            total_score += reward
+            print(f"step {i}: \n annual_revenue: {annual_revenue}, TAC: {TAC} \n Q_values {Q_value}, reward {reward}")
