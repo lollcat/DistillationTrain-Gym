@@ -7,7 +7,7 @@ class DC_gym_reward(DC_Gym):
     This version of the gym only has a single stream as the state. Discrete actions are just to seperate or not
     """
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs, simple_state=True)
 
     def step(self, action):
         continuous_actions, discrete_action = action
@@ -42,7 +42,7 @@ class DC_gym_reward(DC_Gym):
             revenue = 0
             if self.failed_solves >= 3: # reset if we fail 3 times
                 done = True
-                TAC = -100000  # to discourage these actions
+                TAC = -1e1  # to discourage these actions
             else:
                 done = False
             info = {"failed solve": 1}
@@ -59,8 +59,8 @@ class DC_gym_reward(DC_Gym):
         tops_info, bottoms_info = self.get_outlet_info()
         tops_flow, tops_temperature, tops_pressure = tops_info
         bottoms_flow, bottoms_temperature, bottoms_pressure = bottoms_info
-        tops = Stream(self.State.n_total_streams() + 1, tops_flow, tops_temperature, tops_pressure)
-        bottoms = Stream(self.State.n_total_streams() + 2, bottoms_flow, bottoms_temperature, bottoms_pressure)
+        tops = Stream(self.State.n_total_streams + 1, tops_flow, tops_temperature, tops_pressure)
+        bottoms = Stream(self.State.n_total_streams + 2, bottoms_flow, bottoms_temperature, bottoms_pressure)
         tops_state, bottoms_state = self.State.update_state(tops, bottoms)
 
         annual_revenue = self.stream_value(tops_flow) + self.stream_value(bottoms_flow) - self.stream_value(selected_stream.flows)
@@ -83,5 +83,5 @@ class DC_gym_reward(DC_Gym):
         self.State.add_column_data(selected_stream.number, tops.number, bottoms.number,
                                (n_stages, reflux_ratio, reboil_ratio, tops_pressure), TAC)
         info = {}
-        return tops_state, bottoms_state, annual_revenue, -TAC, done, info
+        return tops_state, bottoms_state, annual_revenue/1e6, -TAC/1e6, done, info  # convert rewards to million $
 

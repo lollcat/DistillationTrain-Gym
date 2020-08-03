@@ -1,7 +1,7 @@
 from Utils.memory import Memory
 from DDPG.Nets_batch.Critic import Critic
 from DDPG.Nets_batch.P_actor import ParameterAgent
-from Env.DC_gym_reward import DC_gym_reward as DC_Gym
+from Env.DC_gym import DC_Gym
 from Env.STANDARD_CONFIG import CONFIG
 import numpy as np
 from tensorflow.keras.models import clone_model
@@ -14,8 +14,8 @@ physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 standard_args = CONFIG(1).get_config()
 class Agent:
-    def __init__(self, summary_writer, total_episodes=500, env=DC_Gym(*standard_args), actor_lr=0.0001, critic_lr=0.001,
-                 batch_size=32, mem_length=1000, gamma=0.99, tau=0.001, use_old_memories=True):
+    def __init__(self, summary_writer, total_episodes=500, env=DC_Gym(*standard_args, simple_state=True), actor_lr=0.0001, critic_lr=0.001,
+                 batch_size=32, mem_length=1000, gamma=0.99, tau=0.001, use_old_memories=False):
         assert batch_size < mem_length
         self.total_episodes = total_episodes
         self.env = env
@@ -71,18 +71,20 @@ class Agent:
                 action_continuous = action_continuous[0]
                 action = action_continuous, action_discrete
                 # now take action
-                tops_state, bottoms_state, annual_revenue, TAC, done, info = self.env.step(action)
+                next_state, annual_revenue, TAC, done, info = self.env.step(action)
+                tops_state, bottoms_state = next_state
                 reward = annual_revenue + TAC
                 total_reward += reward
-                with self.summary_writer.as_default():
-                    tf.summary.scalar('n_stages', action_continuous[0], step=self.step)
-                    tf.summary.scalar('reflux', action_continuous[1], step=self.step)
-                    tf.summary.scalar('reboil', action_continuous[2], step=self.step)
-                    tf.summary.scalar('pressure drop ratio', action_continuous[3], step=self.step)
-                    tf.summary.scalar('TAC', TAC, step=self.step)
-                    tf.summary.scalar('revenue', annual_revenue, step=self.step)
 
                 if action_discrete == 0:  # seperating action
+                    with self.summary_writer.as_default():
+                        tf.summary.scalar('n_stages', action_continuous[0], step=self.step)
+                        tf.summary.scalar('reflux', action_continuous[1], step=self.step)
+                        tf.summary.scalar('reboil', action_continuous[2], step=self.step)
+                        tf.summary.scalar('pressure drop ratio', action_continuous[3], step=self.step)
+                        tf.summary.scalar('TAC', TAC, step=self.step)
+                        tf.summary.scalar('revenue', annual_revenue, step=self.step)
+
                     mass_balance_rel_error = np.absolute((state[:, 0:self.env.n_components] - (
                                 tops_state[:, 0:self.env.n_components] +
                                 bottoms_state[:, 0:self.env.n_components]))
@@ -97,7 +99,7 @@ class Agent:
                         f"(state: {state[:, 0:self.env.n_components]}" \
                                                               f"tops: {tops_state[:, 0:self.env.n_components]}" \
                                                               f"bottoms: {bottoms_state[:, 0:self.env.n_components]}")
-                    if (len(info) is 0 or (len(info) is 1 and done is True)) and mass_balance_check is True:  # don't want to store failed solves
+                    if (len(info) == 0 or (len(info) == 1 and done is True)) and mass_balance_check is True:  # don't want to store failed solves
                         # but if we have max_number of failed solves then we add negative reward (TAC) to discourage this action
                         self.memory.add(
                         (state, action_continuous, action_discrete, annual_revenue, TAC, tops_state, bottoms_state,
@@ -237,4 +239,4 @@ class Agent:
         currently just always expanding memory.obj
         """
         old_memory = pickle.load(open("./memory_data/memory.obj", "rb"))
-        self.memory.buffer += old_memory
+        self.memory.buffer += old_memory.buffer

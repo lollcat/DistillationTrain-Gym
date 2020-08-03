@@ -3,7 +3,7 @@ if DEBUG == 0:
     from Env.DC_gym import DC_Gym
     from DDPG.Nets.Critic_simple import Critic
 else:
-    from Env.DC_gym_reward import DC_gym_reward as DC_Gym
+    from Env.DC_gym_simple_state import DC_gym_reward as DC_Gym
     from DDPG.Nets.Critic import Critic
 import tensorflow as tf
 from DDPG.Workers.worker_reward_debug import debug_class

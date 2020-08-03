@@ -1,6 +1,6 @@
-from tensorflow.keras.layers import Dense, Input, Concatenate, Flatten, BatchNormalization
+from tensorflow.keras.layers import Dense, Input, Flatten, BatchNormalization
 from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import RMSprop, Adam
+from tensorflow.keras.optimizers import Adam
 
 
 

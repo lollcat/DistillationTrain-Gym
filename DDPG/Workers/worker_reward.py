@@ -19,6 +19,7 @@ class Worker_reward:
     def __init__(self, name, global_network_P, global_network_dqn, global_optimizer_P, global_optimizer_dqn,
                  global_counter, env, env_args, n_continuous_actions, max_global_steps, returns_list, summary_writer,
                  n_steps=10, gamma=0.999):
+        Needs to be checked and updated
         self.name = name
         self.global_network_P = global_network_P
         self.global_network_dqn = global_network_dqn

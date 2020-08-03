@@ -31,22 +31,37 @@ class State:
     Keeps track of the state as well as the flowsheet layout
     For now the state includes temperature and pressure as added straight to the end of the stream vector
     """
-    def __init__(self, feed_stream, max_streams):
+    def __init__(self, feed_stream, max_streams, simple=True):
         self.streams = deque([feed_stream]) # this is for the state
         self.max_streams = max_streams
         self.temp_norm = feed_stream.temperature
         self.pressure_norm = feed_stream.pressure
         self.flow_norm = feed_stream.flows.max()
-        self.state = np.zeros((1, len(feed_stream.flows) + 2))  # +2 is for T & P
+        self.simple_state = simple
+        if simple:
+            self.state = np.zeros((1, len(feed_stream.flows) + 2))  # +2 is for T & P
+        else:
+            self.state = np.zeros((self.max_streams, len(feed_stream.flows) + 2))
         self.create_state()
         self.final_outlet_streams = []
         self.all_streams = [feed_stream]  # this is a record of all streams
         self.column_data = []  # contains tuple of (inlet stream no, tops stream no, bottoms stream no, (actions), TAC)
 
     def create_state(self):
-        self.state = np.array([list(self.streams[0].flows/self.flow_norm) +
-                                                 [self.streams[0].temperature/self.temp_norm, self.streams[0].pressure/self.pressure_norm]
-                                                 ])
+        if self.simple_state:
+            if self.n_streams > 0:
+                self.state = np.array([list(self.streams[0].flows/self.flow_norm) +
+                                                         [self.streams[0].temperature/self.temp_norm, self.streams[0].pressure/self.pressure_norm]
+                                                     ])
+            else:
+                self.state = np.zeros(self.state.shape)
+        else:
+            self.state = np.zeros(self.state.shape)
+            if self.n_streams > 0:
+                self.state[0:self.n_streams] = np.array([list(stream.flows / self.flow_norm) +
+                                       [stream.temperature / self.temp_norm,
+                                        stream.pressure / self.pressure_norm]
+                                       for stream in self.streams])
 
     def update_streams(self, tops, bottoms):
         """
@@ -63,21 +78,24 @@ class State:
     def update_state(self, tops, bottoms):
         self.update_streams(tops, bottoms)
         self.create_state()
-        tops_state = np.array([list(tops.flows / self.flow_norm) +
-                         [tops.temperature / self.temp_norm, tops.pressure / self.pressure_norm]
-                         ])
-        bottoms_state = np.array([list(bottoms.flows / self.flow_norm) +
-                            [bottoms.temperature / self.temp_norm, bottoms.pressure / self.pressure_norm]
-                            ])
-        return tops_state, bottoms_state  # for next state
+        if self.simple_state is True:
+            tops_state = np.array([list(tops.flows / self.flow_norm) +
+                             [tops.temperature / self.temp_norm, tops.pressure / self.pressure_norm]
+                             ])
+            bottoms_state = np.array([list(bottoms.flows / self.flow_norm) +
+                                [bottoms.temperature / self.temp_norm, bottoms.pressure / self.pressure_norm]
+                                ])
+            return tops_state, bottoms_state  # for next state
+        else:
+            return self.state
 
     def submit_stream(self):
         self.final_outlet_streams.append(self.streams[0])
         self.streams.popleft()
+        self.create_state()
         if self.n_streams == 0:
             return True
         else:
-            self.create_state()
             return False
 
     def add_column_data(self, in_number, tops_number, bottoms_number, actions, TAC):
@@ -91,5 +109,6 @@ class State:
     def n_outlet_streams(self):
         return len(self.final_outlet_streams)
 
+    @property
     def n_total_streams(self):
         return len(self.all_streams)

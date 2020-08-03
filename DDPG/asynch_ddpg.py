@@ -12,7 +12,7 @@ if agent_config == 0:
     from DDPG.Workers.worker import Worker
 else:
     CONFIG_string = "Simple State, Split reward"
-    from Env.DC_gym_reward import DC_gym_reward as DC_Gym
+    from Env.DC_gym_simple_state import DC_gym_reward as DC_Gym
     from DDPG.Nets.Critic import Critic
     from DDPG.Workers.worker_reward import Worker_reward as Worker
 from Env.STANDARD_CONFIG import CONFIG

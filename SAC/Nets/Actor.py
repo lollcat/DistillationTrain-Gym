@@ -35,7 +35,7 @@ class GaussianPolicy(Model):
         mean, log_std = self.call(state)
         std = tf.math.exp(log_std)
 
-        normal = tfp.distributions.Normal(mean, std)
+        normal = tfp.distributions.MultivariateNormalDiag(mean, std)
         z = normal.sample()
         action = tf.math.tanh(z)
         log_pi = normal.log_prob(z) - tf.reduce_sum(tf.math.log(1 - tf.math.square(action) + epsilon),
