@@ -87,7 +87,7 @@ class DC_Gym(SimulatorDC):
         self.set_unit_inputs(n_stages, reflux_ratio, reboil_ratio, pressure_drop_ratio)
         sucessful_solve = self.solve()
         self.error_counter["total_solves"] += 1
-        if sucessful_solve is False:  # This is currently just telling the
+        if sucessful_solve is False:
             self.failed_solves += 1
             self.error_counter["error_solves"] += 1
             TAC = 0
@@ -125,10 +125,9 @@ class DC_Gym(SimulatorDC):
             if tops_revenue > 0:
                 is_product[0] = True
             if bottoms_revenue > 0:
-                self.State.final_outlet_streams.append(bottoms)
                 is_product[1] = True
-            self.State.update_state([tops, bottoms], is_product)
             annual_revenue = tops_revenue + bottoms_revenue
+            self.State.update_state([tops, bottoms], is_product)
         else:
             annual_revenue = self.stream_value(tops_flow) + self.stream_value(bottoms_flow) - self.stream_value(selected_stream.flows)
             self.State.update_state([tops, bottoms])

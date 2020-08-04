@@ -63,7 +63,7 @@ class State:
                                         stream.pressure / self.pressure_norm]
                                        for stream in self.streams])
 
-    def update_streams(self, new_streams, is_product=[False, False]):
+    def update_streams(self, new_streams, is_product=(False, False)):
         self.streams.popleft()
         for i, stream in enumerate(new_streams):
             self.all_streams.append(stream)
