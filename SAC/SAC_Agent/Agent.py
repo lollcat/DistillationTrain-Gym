@@ -27,7 +27,7 @@ class Agent:
         # TODO try DDPG without max thingy
     Question: Can we use soft-Q as valid basis for whether or not to separate?
     """
-    def __init__(self, env=DC_Gym(*standard_args, simple_state=True), total_eps=2e2, batch_size=64, alpha=0.5, max_mem_length=1e4, tau=0.005,
+    def __init__(self, env=DC_Gym(*standard_args, simple_state=True), total_eps=2e2, batch_size=64, alpha=0.4, max_mem_length=1e4, tau=0.005,
                  Q_lr=3e-4, policy_lr=3e-4, alpha_lr=3e-4, gamma=0.99, summary_writer=summary_writer, use_load_memory=False):
         self.env = env
         self.total_eps = int(total_eps)
@@ -73,7 +73,7 @@ class Agent:
                     action_discrete = 1
                 else:
                     Q_value = tf.minimum(self.Q1([state, action_continuous]), self.Q2([state, action_continuous]))
-                    action_discrete = self.eps_greedy(Q_value, ep)
+                    action_discrete = self.get_discrete_action(Q_value)
                 action_continuous = np.squeeze(action_continuous, axis=0)
                 action = action_continuous, action_discrete
                 next_state, annual_revenue, TAC, done, info = self.env.step(action)
@@ -102,7 +102,7 @@ class Agent:
             self.total_scores.append(total_score)
         self.save_memory()
 
-
+    @tf.function
     def learn(self):
         batch = self.memory.sample(self.batch_size)
         states = np.squeeze(np.array([each[0] for each in batch]))
@@ -114,9 +114,10 @@ class Agent:
 
         tops_actions, tops_log_pi = self.Actor.sample_action(tops_states)
         bottoms_actions, bottoms_log_pi = self.Actor.sample_action(bottoms_states)
-        next_Q1 = self.target_Q1([tops_states, tops_actions]) + self.target_Q1([bottoms_states, bottoms_actions])
-        next_Q2 = self.target_Q2([tops_states, tops_actions]) + self.target_Q2([bottoms_states, bottoms_actions])
-        next_Q_target = tf.minimum(next_Q1, next_Q2) - self.alpha * (tops_log_pi + bottoms_log_pi)  # make target soft
+        next_Q_target = \
+            tf.minimum(self.target_Q1([tops_states, tops_actions]), self.target_Q2([tops_states, tops_actions])) + \
+            tf.minimum(self.target_Q1([bottoms_states, bottoms_actions]), self.target_Q2([bottoms_states, bottoms_actions]))
+        next_Q_target = next_Q_target - self.alpha * (tops_log_pi + bottoms_log_pi)  # make target soft
         Q_expected = rewards + self.gamma * tf.maximum(next_Q_target, 0)  # cannot be negative as then would separate
         assert Q_expected.shape == (self.batch_size, 1)
         with tf.GradientTape() as tape1, tf.GradientTape() as tape2:
@@ -158,7 +159,7 @@ class Agent:
             tf.summary.scalar("alpha loss", alpha_loss, self.steps)
             tf.summary.scalar("alpha value", self.alpha, self.steps)
 
-
+    @tf.function
     def update_targets(self):
         self.target_Q1.set_weights([tf.math.multiply(local_weight, self.tau) +
                                     tf.math.multiply(target_weight, 1-self.tau)
@@ -169,20 +170,16 @@ class Agent:
                                       for local_weight, target_weight in
                                       zip(self.Q2.get_weights(), self.target_Q2.get_weights())])
 
-    def eps_greedy(self, Q_value, current_step, max_prob=1, min_prob=0.05):
+    def get_discrete_action(self, Q_value):
         if self.env.current_step is 0:  # must at least separate first stream
             return 0
         else:
-            explore_threshold = max(max_prob - current_step / self.eps_greedy_stop_step * (max_prob - min_prob), min_prob)
-            random = np.random.rand()
-            if random < explore_threshold:
-                action_discrete = np.random.choice(a=[0, 1], p=[0.5, 0.5])
-            else:  # exploit
-                if Q_value > 0:  # separate
-                    action_discrete = 0
-                else:  # submit
-                    action_discrete = 1
+            if Q_value > 0:  # separate
+                action_discrete = 0
+            else:  # submit
+                action_discrete = 1
             return action_discrete
+
 
 
     def save_memory(self):

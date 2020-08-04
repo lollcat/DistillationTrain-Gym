@@ -13,12 +13,13 @@ class DC_Gym(SimulatorDC):
     this is currently just inherited by DC_gym_reward
     """
     def __init__(self, document_path, sales_prices,
-                 annual_operating_hours=8000, required_purity=0.95, simple_state=True):
+                 annual_operating_hours=8000, required_purity=0.95, simple_state=True, auto_submit=True):
         super().__init__(document_path)
         self.simple_state = simple_state
+        self.auto_submit = auto_submit
         self.sales_prices = sales_prices
         self.required_purity = required_purity
-        self.annual_operating_seconds= annual_operating_hours*3600
+        self.annual_operating_seconds = annual_operating_hours*3600
 
         feed_conditions = self.get_inlet_stream_conditions()
         self.original_feed = Stream(1, feed_conditions["flows"],
@@ -115,9 +116,29 @@ class DC_Gym(SimulatorDC):
         bottoms_flow, bottoms_temperature, bottoms_pressure = bottoms_info
         tops = Stream(self.State.n_total_streams + 1, tops_flow, tops_temperature, tops_pressure)
         bottoms = Stream(self.State.n_total_streams + 2, bottoms_flow, bottoms_temperature, bottoms_pressure)
-        next_state = self.State.update_state(tops, bottoms)
 
-        annual_revenue = self.stream_value(tops_flow) + self.stream_value(bottoms_flow) - self.stream_value(selected_stream.flows)
+
+        if self.auto_submit is True:
+            is_product = [False, False]
+            tops_revenue = self.stream_value(tops_flow)
+            bottoms_revenue = self.stream_value(bottoms_flow)
+            if tops_revenue > 0:
+                is_product[0] = True
+            if bottoms_revenue > 0:
+                self.State.final_outlet_streams.append(bottoms)
+                is_product[1] = True
+            self.State.update_state([tops, bottoms], is_product)
+            annual_revenue = tops_revenue + bottoms_revenue
+        else:
+            annual_revenue = self.stream_value(tops_flow) + self.stream_value(bottoms_flow) - self.stream_value(selected_stream.flows)
+            self.State.update_state([tops, bottoms])
+
+        if self.simple_state is True:
+            next_state = self.State.get_next_state(tops, bottoms)
+        else:
+            next_state = self.State.state
+
+
         mass_balance_rel_error = np.absolute(
             (selected_stream.flows-(tops.flows+bottoms.flows)) / np.maximum(selected_stream.flows, 0.01)) # max to prevent divide by 0
         if mass_balance_rel_error.max() >= 0.05:

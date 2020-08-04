@@ -63,31 +63,30 @@ class State:
                                         stream.pressure / self.pressure_norm]
                                        for stream in self.streams])
 
-    def update_streams(self, tops, bottoms):
-        """
-        :param selected_stream_position: the selected stream's position in the state
-        :param tops top stream (Stream Class object)
-        :param bottoms bottoms stream (Stream Class object)
-        """
+    def update_streams(self, new_streams, is_product=[False, False]):
         self.streams.popleft()
-        self.streams.append(tops)
-        self.streams.append(bottoms)
-        self.all_streams.append(tops)
-        self.all_streams.append(bottoms)
+        for i, stream in enumerate(new_streams):
+            self.all_streams.append(stream)
+            if is_product[i]:
+                self.final_outlet_streams.append(stream)
+            else:
+                self.streams.append(stream)
 
-    def update_state(self, tops, bottoms):
-        self.update_streams(tops, bottoms)
+    def update_state(self, new_streams, *kwargs):
+        self.update_streams(new_streams, *kwargs)
         self.create_state()
-        if self.simple_state is True:
-            tops_state = np.array([list(tops.flows / self.flow_norm) +
-                             [tops.temperature / self.temp_norm, tops.pressure / self.pressure_norm]
-                             ])
-            bottoms_state = np.array([list(bottoms.flows / self.flow_norm) +
-                                [bottoms.temperature / self.temp_norm, bottoms.pressure / self.pressure_norm]
-                                ])
-            return tops_state, bottoms_state  # for next state
-        else:
-            return self.state
+
+
+    def get_next_state(self, tops, bottoms):
+        assert self.simple_state is True
+        tops_state = np.array([list(tops.flows / self.flow_norm) +
+                         [tops.temperature / self.temp_norm, tops.pressure / self.pressure_norm]
+                         ])
+        bottoms_state = np.array([list(bottoms.flows / self.flow_norm) +
+                            [bottoms.temperature / self.temp_norm, bottoms.pressure / self.pressure_norm]
+                            ])
+        return tops_state, bottoms_state  # for next state
+
 
     def submit_stream(self):
         self.final_outlet_streams.append(self.streams[0])
