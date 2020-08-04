@@ -147,8 +147,8 @@ class Agent:
             alpha_tape.watch(self.alpha)
             alpha_loss = tf.reduce_mean(self.alpha * tf.stop_gradient(-predicted_log_pi - self.entropy_target))
         alpha_gradient = alpha_tape.gradient(alpha_loss, [self.alpha])
-        del alpha_tape
         self.alpha_optimizer.apply_gradients(zip(alpha_gradient, [self.alpha]))
+        del alpha_tape
         self.update_targets()
 
         with summary_writer.as_default():
@@ -222,3 +222,4 @@ class Agent:
             reward = annual_revenue + TAC  # TAC's sign is included in the env
             total_score += reward
             print(f"step {i}: \n annual_revenue: {annual_revenue}, TAC: {TAC} \n Q_values {Q_value}, reward {reward}")
+        print(total_score)

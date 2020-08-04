@@ -2,7 +2,7 @@
 # runtime per episode (5.5 min / 5 episode average) almost 1 min per episode
 # runtime per episode (180 min for 100 episodes) - note there have been tweaks that may results in different length episodes
 # 9.65 hours for 350 episodes
-# tensorboard --logdir DDPG/BatchMemory_Agent/logs
+# tensorboard --logdir DDPG/logs
 from DDPG.Agent.Agent import Agent
 import matplotlib.pyplot as plt
 import numpy as np

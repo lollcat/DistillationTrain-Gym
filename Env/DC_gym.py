@@ -45,7 +45,7 @@ class DC_Gym(SimulatorDC):
         # pressure drop is as a fraction of the current pressure
         self.continuous_action_names = ['number of stages', 'reflux ratio', 'reboil ratio', 'pressure drop ratio']
         # these will get converted to numbers between -1 and 1
-        self.real_continuous_action_space = spaces.Box(low=np.array([5, 0.1, 0.1, 0]), high=np.array([100, 5, 5, 0.9]),
+        self.real_continuous_action_space = spaces.Box(low=np.array([5, 0.1, 0.1, 0]), high=np.array([100, 10, 10, 0.9]),
                                                        shape=(4,))
         self.continuous_action_space = spaces.Box(low=-1, high=1, shape=(4,))
         # define gym space objects
