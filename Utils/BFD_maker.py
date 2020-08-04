@@ -13,7 +13,7 @@ class Visualiser:
         edges = []
         image_list = []
         if show_all is True:
-            feed_string = "feed \n" + "".join([self.env.compound_names[i] + str(round(flow, 2)) + " mol/s \n"
+            feed_string = "feed \n" + "".join([self.env.compound_names[i] + " " + str(round(flow, 2)) + " mol/s \n"
                                                for i, flow in enumerate(self.env.original_feed.flows)])
         else:
             feed_string = " "
