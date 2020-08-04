@@ -82,8 +82,9 @@ class Agent:
                 total_score += reward
 
                 if action_discrete == 0:
-                        if len(info) == 0 or (len(info) == 1 and done is True):
-                            self.memory.add((state, action_continuous, reward, tops_state, bottoms_state, 1 - done))
+                        if len(info) == 2: # this means we didn't have a failed solve
+                            self.memory.add((state, action_continuous, reward, tops_state, bottoms_state,
+                                             1 - info[0], 1 - info[1]))
                             with self.summary_writer.as_default():
                                 tf.summary.scalar('n_stages', action_continuous[0], step=self.steps)
                                 tf.summary.scalar('reflux', action_continuous[1], step=self.steps)
@@ -102,7 +103,7 @@ class Agent:
             self.total_scores.append(total_score)
         self.save_memory()
 
-    @tf.function
+    #@tf.function
     def learn(self):
         batch = self.memory.sample(self.batch_size)
         states = np.squeeze(np.array([each[0] for each in batch]))
@@ -110,15 +111,18 @@ class Agent:
         rewards = np.array([each[2] for each in batch]).reshape(self.batch_size, 1)
         tops_states = np.squeeze(np.array([each[3] for each in batch]))
         bottoms_states = np.squeeze(np.array([each[4] for each in batch]))
-        dones = np.array([each[5] for each in batch]).reshape(self.batch_size, 1)
+        tops_dones = np.array([each[5] for each in batch]).reshape(self.batch_size, 1)
+        bottoms_dones = np.array([each[6] for each in batch]).reshape(self.batch_size, 1)
 
         tops_actions, tops_log_pi = self.Actor.sample_action(tops_states)
         bottoms_actions, bottoms_log_pi = self.Actor.sample_action(bottoms_states)
-        next_Q_target = \
-            tf.minimum(self.target_Q1([tops_states, tops_actions]), self.target_Q2([tops_states, tops_actions])) + \
-            tf.minimum(self.target_Q1([bottoms_states, bottoms_actions]), self.target_Q2([bottoms_states, bottoms_actions]))
+        tops_hardQ = tops_dones * tf.minimum(self.target_Q1([tops_states, tops_actions]), self.target_Q2([tops_states, tops_actions]))
+        bottoms_hardQ = bottoms_dones * tf.minimum(self.target_Q1([bottoms_states, bottoms_actions]), self.target_Q2([bottoms_states, bottoms_actions]))
+        # sum over new generated states to get value
+        # neither can be 0 because then we would stop seperating
+        next_Q_target = tf.maximum(tops_hardQ, 0) + tf.maximum(bottoms_hardQ, 0)
         next_Q_target = next_Q_target - self.alpha * (tops_log_pi + bottoms_log_pi)  # make target soft
-        Q_expected = rewards + self.gamma * tf.maximum(next_Q_target, 0)  # cannot be negative as then would separate
+        Q_expected = rewards + self.gamma * next_Q_target  # cannot be negative as then would separate
         assert Q_expected.shape == (self.batch_size, 1)
         with tf.GradientTape() as tape1, tf.GradientTape() as tape2:
             tape1.watch(self.Q1.trainable_variables)
@@ -159,7 +163,7 @@ class Agent:
             tf.summary.scalar("alpha loss", alpha_loss, self.steps)
             tf.summary.scalar("alpha value", self.alpha, self.steps)
 
-    @tf.function
+    #@tf.function
     def update_targets(self):
         self.target_Q1.set_weights([tf.math.multiply(local_weight, self.tau) +
                                     tf.math.multiply(target_weight, 1-self.tau)

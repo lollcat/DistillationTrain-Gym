@@ -94,7 +94,6 @@ class DC_Gym(SimulatorDC):
             revenue = 0
             if self.failed_solves >= 3: # reset if we fail 3 times
                 done = True
-                TAC = -1e1  # to discourage these actions
             else:
                 done = False
             info = {"failed solve": 1}
@@ -128,9 +127,11 @@ class DC_Gym(SimulatorDC):
                 is_product[1] = True
             annual_revenue = tops_revenue + bottoms_revenue
             self.State.update_state([tops, bottoms], is_product)
+            info = is_product
         else:
             annual_revenue = self.stream_value(tops_flow) + self.stream_value(bottoms_flow) - self.stream_value(selected_stream.flows)
             self.State.update_state([tops, bottoms])
+            info = {}
 
         if self.simple_state is True:
             next_state = self.State.get_next_state(tops, bottoms)
@@ -154,7 +155,6 @@ class DC_Gym(SimulatorDC):
             done = False
         self.State.add_column_data(selected_stream.number, tops.number, bottoms.number,
                                (n_stages, reflux_ratio, reboil_ratio, tops_pressure), TAC)
-        info = {}
 
         return next_state, annual_revenue/1e6, -TAC/1e6, done, info  # convert rewards to million $
 
