@@ -56,6 +56,16 @@ class DC_Gym(SimulatorDC):
                               "error_solves": 0}  # to get a general idea of how many solves are going wrong
         self.current_step = 0
 
+        self.reward_norm = 0
+        self.max_total_revenue = 0
+        for i, flow in enumerate(feed_conditions["flows"]):
+            stream = np.zeros(self.n_components)
+            stream[i] = flow
+            stream_revenue = self.stream_value(stream)
+            if stream_revenue > self.reward_norm:
+                self.reward_norm = stream_revenue  # set reward normalisation to the max possible single reward
+            self.max_total_revenue += stream_revenue
+
     def step(self, action):
         continuous_actions, discrete_action = action
         if discrete_action == self.discrete_action_space.n - 1:  # submit
@@ -93,10 +103,13 @@ class DC_Gym(SimulatorDC):
             TAC = 0
             revenue = 0
             if self.failed_solves >= 3: # reset if we fail 3 times
+                print("3 failed solves")
                 done = True
+                TAC = -1
+                info = [True, True]  # discourage these actions with negative reward and by saying episode is over
             else:
                 done = False
-            info = {"failed solve": 1}
+                info = {"failed solve": 1}
             next_state = self.State.state
             if self.simple_state:
                 # basically like returning state as tops, 0 as bottoms because nothing has happened in the seperation
@@ -145,7 +158,7 @@ class DC_Gym(SimulatorDC):
             print("MB error!!!")
         #assert mass_balance_rel_error.max() < 0.05, f"Max error: {mass_balance_rel_error.max()}"
 
-        if self.State.n_streams + self.State.n_outlet_streams >= self.max_outlet_streams:
+        if self.State.n_total_streams >= self.max_outlet_streams or self.State.n_streams == 0:
             # this just sets a cap on where the episode must end
             # either all the streams are outlets in which case n_streams is zero
             # (this only happens via submitted steam action so doen't come into play in this part of the step)
@@ -156,7 +169,7 @@ class DC_Gym(SimulatorDC):
         self.State.add_column_data(selected_stream.number, tops.number, bottoms.number,
                                (n_stages, reflux_ratio, reboil_ratio, tops_pressure), TAC)
 
-        return next_state, annual_revenue/1e6, -TAC/1e6, done, info  # convert rewards to million $
+        return next_state, annual_revenue/self.reward_norm, -TAC/self.reward_norm, done, info  # convert rewards to million $
 
     def get_real_continuous_actions(self, continuous_actions):
         # interpolation
