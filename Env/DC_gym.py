@@ -105,7 +105,7 @@ class DC_Gym(SimulatorDC):
             if self.failed_solves >= 3: # reset if we fail 3 times
                 print("3 failed solves")
                 done = True
-                TAC = -1
+                TAC = -0.05
                 info = [True, True]  # discourage these actions with negative reward and by saying episode is over
             else:
                 done = False

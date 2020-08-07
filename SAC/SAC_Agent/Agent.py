@@ -12,7 +12,7 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 standard_args = CONFIG(1).get_config()
 
 
-log_dir = './SAC/logs/' + str(time.time())
+log_dir = './SAC/logs/' + time.asctime(time.localtime(time.time())).replace(" ", "_").replace(":", "-")
 summary_writer = tf.summary.create_file_writer(log_dir)
 
 
@@ -27,7 +27,7 @@ class Agent:
         # TODO try DDPG without max thingy
     Question: Can we use soft-Q as valid basis for whether or not to separate?
     """
-    def __init__(self, env=DC_Gym(*standard_args, simple_state=True), total_eps=2e2, batch_size=64, alpha=0.4, max_mem_length=1e4, tau=0.005,
+    def __init__(self, env=DC_Gym(*standard_args, simple_state=True), total_eps=2e2, batch_size=64, alpha=0.2, max_mem_length=1e4, tau=0.005,
                  Q_lr=3e-4, policy_lr=3e-4, alpha_lr=3e-4, gamma=0.99, summary_writer=summary_writer, use_load_memory=False):
         self.env = env
         self.total_eps = int(total_eps)
@@ -52,7 +52,7 @@ class Agent:
         self.Q1_optimizer = tf.keras.optimizers.Adam(Q_lr)
         self.Q2_optimizer = tf.keras.optimizers.Adam(Q_lr)
         self.Actor_optimizer = tf.keras.optimizers.Adam(policy_lr)
-        self.alpha_optimizer = tf.keras.optimizers.Adam(alpha_lr)
+        self.alpha_optimizer = tf.keras.optimizers.Adam(alpha_lr)  #tf.keras.optimizers.Nadam(alpha_lr)  #
 
         self.summary_writer = summary_writer
         self.use_load_memory = use_load_memory
@@ -116,12 +116,12 @@ class Agent:
 
         tops_actions, tops_log_pi = self.Actor.sample_action(tops_states)
         bottoms_actions, bottoms_log_pi = self.Actor.sample_action(bottoms_states)
-        tops_hardQ = tops_dones * tf.minimum(self.target_Q1([tops_states, tops_actions]), self.target_Q2([tops_states, tops_actions]))
-        bottoms_hardQ = bottoms_dones * tf.minimum(self.target_Q1([bottoms_states, bottoms_actions]), self.target_Q2([bottoms_states, bottoms_actions]))
+        tops_hardQ = tf.minimum(self.target_Q1([tops_states, tops_actions]), self.target_Q2([tops_states, tops_actions]))
+        bottoms_hardQ = tf.minimum(self.target_Q1([bottoms_states, bottoms_actions]), self.target_Q2([bottoms_states, bottoms_actions]))
         # sum over new generated states to get value
-        # neither can be 0 because then we would stop seperating
-        next_Q_target = tf.maximum(tops_hardQ, 0) + tf.maximum(bottoms_hardQ, 0)
-        next_Q_target = next_Q_target - self.alpha * (tops_log_pi + bottoms_log_pi)  # make target soft
+        # neither can be 0 because then we would stop seperating, but bounding probs has no effect (Q generally > 0)
+        next_Q_target = tops_dones * tf.maximum(tops_hardQ - self.alpha * tops_log_pi, 0) + \
+                        bottoms_dones * tf.maximum(bottoms_hardQ - self.alpha*bottoms_log_pi, 0)  # soft target
         Q_expected = rewards + self.gamma * next_Q_target  # cannot be negative as then would separate
         assert Q_expected.shape == (self.batch_size, 1)
         with tf.GradientTape() as tape1, tf.GradientTape() as tape2:
@@ -162,6 +162,8 @@ class Agent:
             tf.summary.scalar("Actor loss", actor_loss, self.steps)
             tf.summary.scalar("alpha loss", alpha_loss, self.steps)
             tf.summary.scalar("alpha value", self.alpha, self.steps)
+            tf.summary.scalar("alpha*predicted_log_pi", tf.reduce_mean(self.alpha*predicted_log_pi), self.steps)
+            tf.summary.scalar("actor_Q_target", tf.reduce_mean(Q_target), self.steps)
 
     #@tf.function
     def update_targets(self):
