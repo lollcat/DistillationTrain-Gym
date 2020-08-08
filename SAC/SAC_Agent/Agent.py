@@ -12,10 +12,6 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 standard_args = CONFIG(1).get_config()
 
 
-log_dir = './SAC/logs/' + time.asctime(time.localtime(time.time())).replace(" ", "_").replace(":", "-")
-summary_writer = tf.summary.create_file_writer(log_dir)
-
-
 class Agent:
     """
     Should we be doing max(Q, 0) thing:
@@ -28,7 +24,8 @@ class Agent:
     Question: Can we use soft-Q as valid basis for whether or not to separate?
     """
     def __init__(self, env=DC_Gym(*standard_args, simple_state=True), total_eps=2e2, batch_size=64, alpha=0.2, max_mem_length=1e4, tau=0.005,
-                 Q_lr=3e-4, policy_lr=3e-4, alpha_lr=3e-4, gamma=0.99, summary_writer=summary_writer, use_load_memory=False):
+                 Q_lr=3e-4, policy_lr=3e-5, alpha_lr=3e-4, gamma=0.99, description="", use_load_memory=False,
+                 actor_update_period=0, reward_scaling=1):
         self.env = env
         self.total_eps = int(total_eps)
         self.eps_greedy_stop_step = int(total_eps*3/4)
@@ -53,8 +50,14 @@ class Agent:
         self.Q2_optimizer = tf.keras.optimizers.Adam(Q_lr)
         self.Actor_optimizer = tf.keras.optimizers.Adam(policy_lr)
         self.alpha_optimizer = tf.keras.optimizers.Adam(alpha_lr)  #tf.keras.optimizers.Nadam(alpha_lr)  #
+        self.reward_scaling = reward_scaling
 
-        self.summary_writer = summary_writer
+        if description == "":
+            #description = f"Q_lr {Q_lr}, policy_lr {policy_lr}, alpha_lr {alpha_lr}"
+            description = f"reward_scaling={reward_scaling}__"
+        log_dir = './SAC/logs/' + description + \
+                  time.asctime(time.localtime(time.time())).replace(" ", "_").replace(":", "-")
+        self.summary_writer = tf.summary.create_file_writer(log_dir)
         self.use_load_memory = use_load_memory
 
     def run(self):
@@ -82,8 +85,9 @@ class Agent:
                 total_score += reward
 
                 if action_discrete == 0:
-                        if len(info) == 2: # this means we didn't have a failed solve
-                            self.memory.add((state, action_continuous, reward, tops_state, bottoms_state,
+                        if len(info) == 2:  # this means we didn't have a failed solve
+                            # note we scale the reward here
+                            self.memory.add((state, action_continuous, reward*self.reward_scaling, tops_state, bottoms_state,
                                              1 - info[0], 1 - info[1]))
                             with self.summary_writer.as_default():
                                 tf.summary.scalar('n_stages', action_continuous[0], step=self.steps)
@@ -156,7 +160,7 @@ class Agent:
         del alpha_tape
         self.update_targets()
 
-        with summary_writer.as_default():
+        with self.summary_writer.as_default():
             tf.summary.scalar("Q1 loss", loss_Q1, self.steps)
             tf.summary.scalar("Q2 loss", loss_Q2, self.steps)
             tf.summary.scalar("Actor loss", actor_loss, self.steps)
