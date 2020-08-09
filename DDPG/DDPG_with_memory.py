@@ -15,9 +15,9 @@ current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 log_dir = "DDPG/logs/" + current_time
 summary_writer = tf.summary.create_file_writer(log_dir)
 
-#TODO mass balance problem - potentially put limits on pressure drop action if it is from this
-#Agent = Agent(summary_writer=summary_writer, total_episodes=50, mem_length=100, batch_size=10)
-Agent = Agent(summary_writer=summary_writer, total_episodes=200, mem_length=1000, batch_size=64)
+
+Agent = Agent(summary_writer=summary_writer, total_episodes=5, mem_length=3, batch_size=2, min_memory_length=2)
+#Agent = Agent(summary_writer=summary_writer, total_episodes=200, mem_length=1000, batch_size=64)
 #Agent = Agent(summary_writer=summary_writer, total_episodes=500, mem_length=3000, batch_size=64)
 
 

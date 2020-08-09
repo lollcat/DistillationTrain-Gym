@@ -15,12 +15,15 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 standard_args = CONFIG(1).get_config()
 class Agent:
     def __init__(self, summary_writer, total_episodes=500, env=DC_Gym(*standard_args, simple_state=True), actor_lr=0.0001, critic_lr=0.001,
-                 batch_size=32, mem_length=1000, gamma=0.99, tau=0.001, use_old_memories=False):
+                 batch_size=32, mem_length=1e4, min_memory_length=1e3, gamma=0.99, tau=0.001, use_old_memories=False):
         assert batch_size < mem_length
+        assert min_memory_length <= mem_length
         self.total_episodes = total_episodes
         self.env = env
         self.batch_size = batch_size
-        self.memory = Memory(max_size=mem_length)
+        self.memory = Memory(max_size=int(mem_length))
+        self.min_memory_length = int(min_memory_length)
+        self.use_load_memory = use_old_memories
         if use_old_memories is True:
             self.load_memory()
         self.param_model, self.param_optimizer = \
@@ -51,6 +54,10 @@ class Agent:
 
 
     def run_episodes(self):
+        if self.use_load_memory is True:
+            self.load_memory()
+        else:
+            self.fill_memory()
         for i in range(self.total_episodes):
             state = self.env.reset()
             done = False
@@ -69,7 +76,11 @@ class Agent:
                     # must submit if there is not a lot of flow, add bit of extra margin to prevent errors
                     action_discrete = 1
                 else:
-                    action_discrete = self.eps_greedy(Q_value, i, round(self.total_episodes*3/4))
+                    #action_discrete = self.eps_greedy(Q_value, i, round(self.total_episodes*3/4))
+                    if Q_value > 0:
+                        action_discrete = 0
+                    else:
+                        action_discrete = 1
                 action_continuous = action_continuous[0]
                 action = action_continuous, action_discrete
                 # now take action
@@ -79,34 +90,18 @@ class Agent:
                 total_reward += reward
 
                 if action_discrete == 0:  # seperating action
-                    with self.summary_writer.as_default():
-                        tf.summary.scalar('n_stages', action_continuous[0], step=self.step)
-                        tf.summary.scalar('reflux', action_continuous[1], step=self.step)
-                        tf.summary.scalar('reboil', action_continuous[2], step=self.step)
-                        tf.summary.scalar('pressure drop ratio', action_continuous[3], step=self.step)
-                        tf.summary.scalar('TAC', TAC, step=self.step)
-                        tf.summary.scalar('revenue', annual_revenue, step=self.step)
-
-                    mass_balance_rel_error = np.absolute((state[:, 0:self.env.n_components] - (
-                                tops_state[:, 0:self.env.n_components] +
-                                bottoms_state[:, 0:self.env.n_components]))
-                                             / np.maximum(state[:, 0:self.env.n_components], 0.1)) # 0 to prevent divide by 0
-                    mass_balance_check = True
-                    # assert mass_balance_rel_error.max() < 0.05
-                    if mass_balance_rel_error.max() > 0.05:
-                        mass_balance_check = False
-                        print(
-                        f"Max error: {mass_balance_rel_error.max()} \n"\
-                        f"MB rel error: {mass_balance_rel_error} \n" \
-                        f"(state: {state[:, 0:self.env.n_components]}" \
-                                                              f"tops: {tops_state[:, 0:self.env.n_components]}" \
-                                                              f"bottoms: {bottoms_state[:, 0:self.env.n_components]}")
-                    if (len(info) == 0 or (len(info) == 1 and done is True)) and mass_balance_check is True:  # don't want to store failed solves
-                        # but if we have max_number of failed solves then we add negative reward (TAC) to discourage this action
+                    if len(info) == 2:  # this means we didn't have a failed solve
+                        # note we scale the reward here
                         self.memory.add(
-                        (state, action_continuous, action_discrete, annual_revenue, TAC, tops_state, bottoms_state,
-                         1 - done))
-                    if len(self.memory.buffer) > self.batch_size:
+                            (state, action_continuous, annual_revenue, TAC, tops_state, bottoms_state,
+                             1 - info[0], 1 - info[1]))
+                        with self.summary_writer.as_default():
+                            tf.summary.scalar('n_stages', action_continuous[0], step=self.step)
+                            tf.summary.scalar('reflux', action_continuous[1], step=self.step)
+                            tf.summary.scalar('reboil', action_continuous[2], step=self.step)
+                            tf.summary.scalar('pressure drop ratio', action_continuous[3], step=self.step)
+                            tf.summary.scalar('TAC', TAC, step=self.step)
+                            tf.summary.scalar('revenue', annual_revenue, step=self.step)
                         self.learn()
 
             with self.summary_writer.as_default():
@@ -125,45 +120,40 @@ class Agent:
     def learn(self):
         # now sample from batch & train
         batch = self.memory.sample(self.batch_size)
-        state_batch = np.array([each[0] for each in batch])
-        continuous_action_batch = np.array([each[1] for each in batch])
-        discrete_action_batch = np.array([each[2] for each in batch])
-        annual_revenue_batch = np.array([each[3] for each in batch]).reshape(self.batch_size, 1)
-        TAC_batch = np.array([each[4] for each in batch]).reshape(self.batch_size, 1)
-        tops_state_batch = np.array([each[5] for each in batch])
-        bottoms_state_batch = np.array([each[6] for each in batch])
-        done_batch = np.array([each[7] for each in batch])
+        states = np.squeeze(np.array([each[0] for each in batch]))
+        actions = np.array([each[1] for each in batch])
+        annual_revenues = np.array([each[2] for each in batch]).reshape(self.batch_size, 1)
+        TACs = np.array([each[3] for each in batch]).reshape(self.batch_size, 1)
+        tops_states = np.squeeze(np.array([each[4] for each in batch]))
+        bottoms_states = np.squeeze(np.array([each[5] for each in batch]))
+        tops_dones = np.array([each[6] for each in batch]).reshape(self.batch_size, 1)
+        bottoms_dones = np.array([each[7] for each in batch]).reshape(self.batch_size, 1)
 
         # next state includes tops and bottoms
-        next_continuous_action_tops = self.param_model_target.predict_on_batch(tops_state_batch)
-        next_continuous_action_bottoms = self.param_model_target.predict_on_batch(bottoms_state_batch)
+        next_continuous_action_tops = self.param_model_target.predict_on_batch(tops_states)
+        next_continuous_action_bottoms = self.param_model_target.predict_on_batch(bottoms_states)
         Q_value_top = tf.keras.backend.sum(self.critic_model_target.predict_on_batch(
-            [tops_state_batch, next_continuous_action_tops]), axis=0)
+            [tops_states, next_continuous_action_tops]), axis=0) * tops_dones
         Q_value_bottoms = tf.keras.backend.sum(self.critic_model_target.predict_on_batch(
-            [bottoms_state_batch, next_continuous_action_bottoms]), axis=0)
+            [bottoms_states, next_continuous_action_bottoms]), axis=0) * bottoms_dones
         # target
         # note we don't use the actual done values because the max function is doing a version of this
         target_next_state_value = self.gamma * (tf.math.maximum(Q_value_top, 0) + tf.math.maximum(Q_value_bottoms, 0))
         # double check if need be
-        mass_balance_rel_error_max = ((state_batch[:, :, 0:self.env.n_components] - (
-                tops_state_batch[:, :, 0:self.env.n_components] +
-                bottoms_state_batch[:, :, 0:self.env.n_components]))
-                                 / np.maximum(state_batch[:, :, 0:self.env.n_components], 0.1)).max() # min to prevent divide by 0
-        assert mass_balance_rel_error_max < 0.05
         with tf.GradientTape() as tape0, tf.GradientTape(persistent=True) as tape1:
             tape0.watch(self.param_model.trainable_weights)
             tape1.watch(self.critic_model.trainable_weights)
-            predict_param = self.param_model.predict_on_batch(state_batch)
-            critic_value = tf.keras.backend.sum(self.critic_model.predict_on_batch([state_batch, predict_param]), axis=0)
+            predict_param = self.param_model.predict_on_batch(states)
+            critic_value = tf.keras.backend.sum(self.critic_model.predict_on_batch([states, predict_param]), axis=0)
             loss_param = - tf.math.reduce_mean(critic_value)
 
             # compute Q net updates
             # first for TAC and revenue which is simple
             revenue_prediction, TAC_prediction, future_reward_prediction = \
-                self.critic_model.predict_on_batch([state_batch, continuous_action_batch])
-            loss_revenue = tf.math.reduce_mean(tf.keras.losses.MSE(tf.convert_to_tensor(annual_revenue_batch, dtype=np.float32),
+                self.critic_model.predict_on_batch([states, actions])
+            loss_revenue = tf.math.reduce_mean(tf.keras.losses.MSE(tf.convert_to_tensor(annual_revenues, dtype=np.float32),
                                                revenue_prediction))
-            loss_TAC = tf.math.reduce_mean(tf.keras.losses.MSE(tf.convert_to_tensor(TAC_batch, dtype=np.float32),
+            loss_TAC = tf.math.reduce_mean(tf.keras.losses.MSE(tf.convert_to_tensor(TACs, dtype=np.float32),
                                                                TAC_prediction))
             loss_next_state_value = tf.math.reduce_mean(tf.keras.losses.MSE(
                 tf.convert_to_tensor(target_next_state_value, np.float32), future_reward_prediction))
@@ -234,12 +224,42 @@ class Agent:
             print(f"step {i}: \n annual_revenue: {annual_revenue}, TAC: {TAC} \n Q_values {Q_values}, reward {reward}")
 
     def save_memory(self):
-        pickle.dump(self.memory, open("./memory_data/" + str(time.time()) + ".obj", "wb"))
-        pickle.dump(self.memory, open("./memory_data/memory.obj", "wb"))
+        pickle.dump(self.memory, open("./DDPG/memory_data/" + str(time.time()) + ".obj", "wb"))
+        pickle.dump(self.memory, open("./DDPG/memory_data/memory.obj", "wb"))
 
     def load_memory(self):
         """
         currently just always expanding memory.obj
         """
-        old_memory = pickle.load(open("./memory_data/memory.obj", "rb"))
+        old_memory = pickle.load(open("./DDPG/memory_data/memory.obj", "rb"))
         self.memory.buffer += old_memory.buffer
+
+    def fill_memory(self):
+        while len(self.memory.buffer) < self.min_memory_length:
+            total_score = 0
+            done = False
+            state = self.env.reset()
+            current_step = 0
+            while not done:
+                current_step += 1
+                state = self.env.State.state.copy()
+                action_continuous, _ = self.env.sample()
+                if state[:, 0: self.env.n_components].max() * self.env.State.flow_norm <= self.env.min_total_flow * 1.1:
+                    # must submit if there is not a lot of flow, add bit of extra margin to prevent errors
+                    action_discrete = 1
+                else:
+                    action_discrete = np.random.choice([0, 1], p=[0.9, 0.1])
+                action = action_continuous, action_discrete
+                next_state, annual_revenue, TAC, done, info = self.env.step(action)
+                tops_state, bottoms_state = next_state
+                reward = annual_revenue + TAC  # TAC's sign is included in the env
+                total_score += reward
+
+                if action_discrete == 0:
+                        if len(info) == 2:  # this means we didn't have a failed solve
+                            # note we scale the reward here
+                            self.memory.add((state, action_continuous, reward, tops_state, bottoms_state,
+                                             1 - info[0], 1 - info[1]))
+                            if len(self.memory.buffer) % (self.min_memory_length/10) == 0:
+                                print(f"memory {len(self.memory.buffer)}/{self.min_memory_length}")
+        pickle.dump(self.memory, open("./DDPG/memory_data/random_memory.obj", "wb"))
