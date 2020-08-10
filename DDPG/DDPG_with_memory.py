@@ -16,7 +16,7 @@ log_dir = "DDPG/logs/" + current_time
 summary_writer = tf.summary.create_file_writer(log_dir)
 
 
-Agent = Agent(summary_writer=summary_writer, total_episodes=5, mem_length=3, batch_size=2, min_memory_length=2)
+Agent = Agent(summary_writer=summary_writer, total_episodes=1000, mem_length=1e4, batch_size=64, min_memory_length=600)
 #Agent = Agent(summary_writer=summary_writer, total_episodes=200, mem_length=1000, batch_size=64)
 #Agent = Agent(summary_writer=summary_writer, total_episodes=500, mem_length=3000, batch_size=64)
 

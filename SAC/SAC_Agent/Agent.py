@@ -64,6 +64,8 @@ class Agent:
         self.summary_writer = tf.summary.create_file_writer(log_dir)
         self.use_load_memory = use_load_memory
 
+        self.memory_dir = "./SAC/memory_data/"
+
     def run(self):
         if self.use_load_memory is True:
             self.load_memory()
@@ -141,7 +143,7 @@ class Agent:
                                              1 - info[0], 1 - info[1]))
                             if len(self.memory.buffer) % (self.min_mem_length/10) == 0:
                                 print(f"memory {len(self.memory.buffer)}/{self.min_mem_length}")
-        pickle.dump(self.memory, open("./SAC/memory_data/random_memory.obj", "wb"))
+        pickle.dump(self.memory, open(self.memory_dir + "random_memory.obj", "wb"))
 
     #@tf.function
     def learn(self):
@@ -230,14 +232,14 @@ class Agent:
 
 
     def save_memory(self):
-        pickle.dump(self.memory, open("./SAC/memory_data/" + str(time.time()) + ".obj", "wb"))
-        pickle.dump(self.memory, open("./SAC/memory_data/memory.obj", "wb"))
+        pickle.dump(self.memory, open(self.memory_dir + str(time.time()) + ".obj", "wb"))
+        pickle.dump(self.memory, open(self.memory_dir + "memory.obj", "wb"))
 
     def load_memory(self):
         """
         currently just always expanding memory.obj
         """
-        old_memory = pickle.load(open("./SAC/memory_data/random_memory.obj", "rb"))
+        old_memory = pickle.load(open(self.memory_dir + "random_memory.obj", "rb"))
         self.memory.buffer += old_memory.buffer
 
     def test_run(self):

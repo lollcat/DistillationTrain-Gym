@@ -1,5 +1,6 @@
 from Hard_Actor_Critic.Nets.Actor import DeterministicPolicy as Actor
 from Hard_Actor_Critic.Nets.Critic import Critic
+from SAC.SAC_Agent import Agent as SAC_Agent
 from Utils.memory import Memory
 import tensorflow as tf
 import numpy as np
@@ -9,48 +10,24 @@ from Env.DC_gym import DC_Gym
 from Env.STANDARD_CONFIG import CONFIG
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
-standard_args = CONFIG(1).get_config()
 
 
-class Agent:
+class Agent(SAC_Agent):
     """
     SAC without the soft
     """
-    def __init__(self, env=DC_Gym(*standard_args, simple_state=True), total_eps=2e2, batch_size=64, alpha=0.2, max_mem_length=1e4, tau=0.005,
-                 Q_lr=3e-3, policy_lr=3e-4, gamma=0.99, description="", use_load_memory=False,
-                 actor_update_period=0, reward_scaling=1):
-        self.env = env
-        self.total_eps = int(total_eps)
-        self.eps_greedy_stop_step = int(total_eps*3/4)
-        self.steps = 0
-        self.total_scores = []
-        self.batch_size = batch_size
-        self.tau = tau
-        self.memory = Memory(int(max_mem_length))
-        self.gamma = gamma
-
-        self.Actor = Actor(env.real_continuous_action_space.shape[0])
-        self.Q1 = Critic()
-        self.Q2 = Critic()
-        self.target_Q1 = Critic()
-        self.target_Q1.set_weights(self.Q1.get_weights())
-        self.target_Q2 = Critic()
-        self.target_Q2.set_weights(self.Q2.get_weights())
-
-        self.Q1_optimizer = tf.keras.optimizers.Adam(Q_lr)
-        self.Q2_optimizer = tf.keras.optimizers.Adam(Q_lr)
-        self.Actor_optimizer = tf.keras.optimizers.Adam(policy_lr)
-        self.reward_scaling = reward_scaling
-
-        if description == "":
-            #description = f"Q_lr {Q_lr}, policy_lr {policy_lr}, alpha_lr {alpha_lr}"
-            description = f"reward_scaling={reward_scaling}__"
+    def __init__(self, description="", *args, **kwargs):
+        super().__init__(*args, **kwargs)
         log_dir = './logs/HAC__' + description + \
                   time.asctime(time.localtime(time.time())).replace(" ", "_").replace(":", "-")
         self.summary_writer = tf.summary.create_file_writer(log_dir)
-        self.use_load_memory = use_load_memory
+        self.memory_dir = "./Hard_Actor_Critic/memory_data/"
 
     def run(self):
+        if self.use_load_memory is True:
+            self.load_memory()
+        else:
+            self.fill_memory()
         for ep in range(self.total_eps):
             total_score = 0
             done = False
@@ -147,40 +124,6 @@ class Agent:
             tf.summary.scalar("Q2 loss", loss_Q2, self.steps)
             tf.summary.scalar("Actor loss", actor_loss, self.steps)
             tf.summary.scalar("actor_Q_target", tf.reduce_mean(Q_target), self.steps)
-
-    #@tf.function
-    def update_targets(self):
-        self.target_Q1.set_weights([tf.math.multiply(local_weight, self.tau) +
-                                    tf.math.multiply(target_weight, 1-self.tau)
-                                      for local_weight, target_weight in
-                                      zip(self.Q1.get_weights(), self.target_Q1.get_weights())])
-        self.target_Q2.set_weights([tf.math.multiply(local_weight, self.tau) +
-                                    tf.math.multiply(target_weight, 1-self.tau)
-                                      for local_weight, target_weight in
-                                      zip(self.Q2.get_weights(), self.target_Q2.get_weights())])
-
-    def get_discrete_action(self, Q_value):
-        if self.env.current_step is 0:  # must at least separate first stream
-            return 0
-        else:
-            if Q_value > 0:  # separate
-                action_discrete = 0
-            else:  # submit
-                action_discrete = 1
-            return action_discrete
-
-
-
-    def save_memory(self):
-        pickle.dump(self.memory, open("./SAC/memory_data/" + str(time.time()) + ".obj", "wb"))
-        pickle.dump(self.memory, open("./SAC/memory_data/memory.obj", "wb"))
-
-    def load_memory(self):
-        """
-        currently just always expanding memory.obj
-        """
-        old_memory = pickle.load(open("./SAC/memory_data/memory.obj", "rb"))
-        self.memory.buffer += old_memory.buffer
 
     def test_run(self):
         state = self.env.reset()

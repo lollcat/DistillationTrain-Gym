@@ -68,10 +68,10 @@ class Agent:
                 current_step += 1
                 state = self.env.State.state.copy()
                 #noise = self.noise()
-                noise = 0.3 * np.random.normal(0, 1, size=self.env.continuous_action_space.shape[0])
-                action_continuous = np.clip(self.param_model.predict(state[np.newaxis, :]) + noise,
+                noise = 0.3 * np.random.normal(0, 1, size=(1, self.env.continuous_action_space.shape[0]))
+                action_continuous = np.clip(self.param_model.predict(state) + noise,
                                             a_min=-1, a_max=1)
-                Q_value = np.sum(self.critic_model.predict([state[np.newaxis, :], action_continuous]), axis=0)
+                Q_value = np.sum(self.critic_model.predict([state, action_continuous]), axis=0)
                 if state[:, 0: self.env.n_components].max()*self.env.State.flow_norm <= self.env.min_total_flow*1.1:
                     # must submit if there is not a lot of flow, add bit of extra margin to prevent errors
                     action_discrete = 1
@@ -102,7 +102,7 @@ class Agent:
                             tf.summary.scalar('pressure drop ratio', action_continuous[3], step=self.step)
                             tf.summary.scalar('TAC', TAC, step=self.step)
                             tf.summary.scalar('revenue', annual_revenue, step=self.step)
-                        self.learn()
+                self.learn()
 
             with self.summary_writer.as_default():
                 tf.summary.scalar('total score', total_reward, step=i)
@@ -202,7 +202,7 @@ class Agent:
         total_reward = 0
         i = 0
         while not done:
-            i +=1
+            i += 1
             state = self.env.State.state.copy()
             action_continuous = self.param_model.predict(state[np.newaxis, :])
             Q_values = self.critic_model.predict([state[np.newaxis, :], action_continuous])
@@ -218,7 +218,8 @@ class Agent:
             action_continuous = action_continuous[0]
             action = action_continuous, action_discrete
             # now take action
-            tops_state, bottoms_state, annual_revenue, TAC, done, info = self.env.step(action)
+            next_state, annual_revenue, TAC, done, info = self.env.step(action)
+            tops_state, bottoms_state = next_state
             reward = annual_revenue + TAC
             total_reward += reward
             print(f"step {i}: \n annual_revenue: {annual_revenue}, TAC: {TAC} \n Q_values {Q_values}, reward {reward}")
@@ -235,31 +236,29 @@ class Agent:
         self.memory.buffer += old_memory.buffer
 
     def fill_memory(self):
+        done = False
+        state = self.env.reset()
         while len(self.memory.buffer) < self.min_memory_length:
-            total_score = 0
-            done = False
-            state = self.env.reset()
-            current_step = 0
-            while not done:
-                current_step += 1
-                state = self.env.State.state.copy()
-                action_continuous, _ = self.env.sample()
-                if state[:, 0: self.env.n_components].max() * self.env.State.flow_norm <= self.env.min_total_flow * 1.1:
-                    # must submit if there is not a lot of flow, add bit of extra margin to prevent errors
-                    action_discrete = 1
-                else:
-                    action_discrete = np.random.choice([0, 1], p=[0.9, 0.1])
-                action = action_continuous, action_discrete
-                next_state, annual_revenue, TAC, done, info = self.env.step(action)
-                tops_state, bottoms_state = next_state
-                reward = annual_revenue + TAC  # TAC's sign is included in the env
-                total_score += reward
+            state = self.env.State.state.copy()
+            action_continuous, _ = self.env.sample()
+            if state[:, 0: self.env.n_components].max() * self.env.State.flow_norm <= self.env.min_total_flow * 1.1:
+                # must submit if there is not a lot of flow, add bit of extra margin to prevent errors
+                action_discrete = 1
+            else:
+                action_discrete = np.random.choice([0, 1], p=[0.9, 0.1])
+            action = action_continuous, action_discrete
+            next_state, annual_revenue, TAC, done, info = self.env.step(action)
+            tops_state, bottoms_state = next_state
+            reward = annual_revenue + TAC  # TAC's sign is included in the env
 
-                if action_discrete == 0:
-                        if len(info) == 2:  # this means we didn't have a failed solve
-                            # note we scale the reward here
-                            self.memory.add((state, action_continuous, reward, tops_state, bottoms_state,
-                                             1 - info[0], 1 - info[1]))
-                            if len(self.memory.buffer) % (self.min_memory_length/10) == 0:
-                                print(f"memory {len(self.memory.buffer)}/{self.min_memory_length}")
+            if action_discrete == 0:
+                    if len(info) == 2:  # this means we didn't have a failed solve
+                        # note we scale the reward here
+                        self.memory.add((state, action_continuous, annual_revenue, TAC, tops_state, bottoms_state,
+                                         1 - info[0], 1 - info[1]))
+                        if len(self.memory.buffer) % (self.min_memory_length/10) == 0:
+                            print(f"memory {len(self.memory.buffer)}/{self.min_memory_length}")
+            if done is True:
+                state = self.env.reset()
+
         pickle.dump(self.memory, open("./DDPG/memory_data/random_memory.obj", "wb"))

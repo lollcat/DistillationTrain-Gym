@@ -13,9 +13,8 @@ class ParameterAgent:
 
 
     def build_network(self):
-        input_state = Input(shape=self.state_shape, name="input_state")
-        flat_input_state = Flatten(name="flat_input_state")(input_state)
-        out = Dense(self.layer_size, activation='relu', name="dense1")(flat_input_state)
+        input_state = Input(shape=(self.state_shape[1], ), name="input_state")
+        out = Dense(self.layer_size, activation='relu', name="dense1")(input_state)
         out = BatchNormalization()(out)
         out = Dense(self.layer_size, activation='relu', name="dense2")(out)
         out = BatchNormalization()(out)

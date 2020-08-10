@@ -12,9 +12,8 @@ class Critic:
 
 
     def build_network(self):
-        input_state = Input(shape=self.state_shape, name="input_state")
-        flat_input_state = Flatten(name="flat_input_state")(input_state)
-        state_out = Dense(16, activation='relu')(flat_input_state)
+        input_state = Input(shape=(self.state_shape[1],), name="input_state")
+        state_out = Dense(16, activation='relu')(input_state)
         state_out = BatchNormalization()(state_out)
         state_out = Dense(32, activation='relu')(state_out)
         state_out = BatchNormalization()(state_out)
