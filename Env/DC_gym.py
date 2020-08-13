@@ -131,14 +131,19 @@ class DC_Gym(SimulatorDC):
 
 
         if self.auto_submit is True:
-            is_product = [False, False]
+
             tops_revenue = self.stream_value(tops_flow)
             bottoms_revenue = self.stream_value(bottoms_flow)
-            if tops_revenue > 0:
-                is_product[0] = True
-            if bottoms_revenue > 0:
-                is_product[1] = True
             annual_revenue = tops_revenue + bottoms_revenue
+            if self.State.n_total_streams < self.max_outlet_streams:
+                # if max streams not yet reached then only streams with revenue are product
+                is_product = [False, False]
+                if tops_revenue > 0:
+                    is_product[0] = True
+                if bottoms_revenue > 0:
+                    is_product[1] = True
+            else:
+                is_product = [True, True]  # once max streams reached then each columns new streams have to be product
             self.State.update_state([tops, bottoms], is_product)
             info = is_product
         else:
@@ -158,11 +163,8 @@ class DC_Gym(SimulatorDC):
             print("MB error!!!")
         #assert mass_balance_rel_error.max() < 0.05, f"Max error: {mass_balance_rel_error.max()}"
 
-        if self.State.n_total_streams >= self.max_outlet_streams or self.State.n_streams == 0:
-            # this just sets a cap on where the episode must end
-            # either all the streams are outlets in which case n_streams is zero
-            # (this only happens via submitted steam action so doen't come into play in this part of the step)
-            # or we reach a cap on max number of streams
+        if self.State.n_streams == 0:
+            # episode done when no streams left
             done = True
         else:
             done = False

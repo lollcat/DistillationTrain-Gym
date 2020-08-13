@@ -164,6 +164,7 @@ class Agent:
             tf.summary.scalar("TAC batch mean loss", loss_TAC, step=self.step)
             tf.summary.scalar("next_state_value batch mean loss", loss_next_state_value, step=self.step)
             tf.summary.scalar("total DQN loss", loss_TAC + loss_revenue + loss_next_state_value, step=self.step)
+            tf.summary.scalar("next_state_value_target", tf.reduce_mean(target_next_state_value), step=self.step)
 
         # get gradients of loss with respect to the param_model weights
         gradient_param = tape0.gradient(loss_param, self.param_model.trainable_weights)
@@ -229,10 +230,13 @@ class Agent:
         pickle.dump(self.memory, open("./DDPG/memory_data/memory.obj", "wb"))
 
     def load_memory(self):
+
         """
-        currently just always expanding memory.obj
+        Currently use load_memory to skip having to fill memory with random experiences
+        Could do something with below to run without running the env to save time
+        "./DDPG/memory_data/memory.obj"
         """
-        old_memory = pickle.load(open("./DDPG/memory_data/memory.obj", "rb"))
+        old_memory = pickle.load(open("./DDPG/memory_data/random_memory.obj", "rb"))
         self.memory.buffer += old_memory.buffer
 
     def fill_memory(self):
