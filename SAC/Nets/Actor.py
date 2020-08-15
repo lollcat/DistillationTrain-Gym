@@ -3,7 +3,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 import tensorflow as tf
 import tensorflow_probability as tfp
-tf.keras.backend.set_floatx('float64')
+tf.keras.backend.set_floatx('float32')
 
 
 class GaussianPolicy(Model):

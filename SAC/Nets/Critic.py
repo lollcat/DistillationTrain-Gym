@@ -1,7 +1,7 @@
 from tensorflow.keras.layers import Dense, Concatenate, Flatten
 from tensorflow.keras.models import Model
 import tensorflow as tf
-tf.keras.backend.set_floatx('float64')
+tf.keras.backend.set_floatx('float32')
 
 class Critic(Model):
     def __init__(self, layer_size=256):

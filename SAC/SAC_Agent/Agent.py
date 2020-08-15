@@ -10,19 +10,10 @@ from Env.STANDARD_CONFIG import CONFIG
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 standard_args = CONFIG(1).get_config()
+tf.keras.backend.set_floatx('float32')
 
 
 class Agent:
-    """
-    Should we be doing max(Q, 0) thing:
-        (1) Not doing it would make future states "more negative" so might better learn when to stop seperating
-        (2) It does seem like safe intermediate method
-        (3) Better method may be to try get whether the next state ended up getting submitted or not
-            (3.1) This would look like getting 2 done results per action
-        (4) For not lets do the max thing
-        # TODO try DDPG without max thingy
-    Question: Can we use soft-Q as valid basis for whether or not to separate?
-    """
     def __init__(self, env=DC_Gym(*standard_args, simple_state=True), total_eps=2e2, batch_size=64, alpha=0.2,
                  max_mem_length=1e4, min_mem_length=1e3, tau=0.005,
                  Q_lr=3e-4, policy_lr=3e-4, alpha_lr=3e-4, gamma=0.99, description="", use_load_memory=False,
@@ -45,10 +36,10 @@ class Agent:
         self.target_Q1.set_weights(self.Q1.get_weights())
         self.target_Q2 = Critic()
         self.target_Q2.set_weights(self.Q2.get_weights())
-        self.log_alpha = tf.Variable(0, dtype=tf.float64)
-        self.alpha = tf.Variable(0, dtype=tf.float64)
+        self.log_alpha = tf.Variable(-1, dtype=tf.float32)
+        self.alpha = tf.Variable(0, dtype=tf.float32)
         self.alpha.assign(tf.exp(self.log_alpha))
-        self.entropy_target = tf.constant(-np.prod(env.real_continuous_action_space.shape), dtype=tf.float64)
+        self.entropy_target = tf.constant(-np.prod(env.real_continuous_action_space.shape), dtype=tf.float32)
 
         self.Q1_optimizer = tf.keras.optimizers.Adam(Q_lr)
         self.Q2_optimizer = tf.keras.optimizers.Adam(Q_lr)
@@ -156,6 +147,14 @@ class Agent:
         tops_dones = np.array([each[5] for each in batch]).reshape(self.batch_size, 1)
         bottoms_dones = np.array([each[6] for each in batch]).reshape(self.batch_size, 1)
 
+        self.critic_learn(states, actions, rewards, tops_states, bottoms_states, tops_dones, bottoms_dones)
+        self.actor_learn(states)
+        self.alpha_learn(states)
+        self.update_targets()
+
+
+    @tf.function
+    def critic_learn(self, states, actions, rewards, tops_states, bottoms_states, tops_dones, bottoms_dones):
         tops_actions, tops_log_pi = self.Actor.sample_action(tops_states)
         bottoms_actions, bottoms_log_pi = self.Actor.sample_action(bottoms_states)
         tops_hardQ = tf.minimum(self.target_Q1([tops_states, tops_actions]), self.target_Q2([tops_states, tops_actions]))
@@ -164,7 +163,7 @@ class Agent:
         # neither can be 0 because then we would stop seperating, but bounding probs has no effect (Q generally > 0)
         next_Q_target = tops_dones * tf.maximum(tops_hardQ - self.alpha * tops_log_pi, 0) + \
                         bottoms_dones * tf.maximum(bottoms_hardQ - self.alpha*bottoms_log_pi, 0)  # soft target
-        Q_expected = rewards + self.gamma * next_Q_target  # cannot be negative as then would separate
+        Q_expected = tf.stop_gradient(rewards + self.gamma * next_Q_target)  # cannot be negative as then would separate
         assert Q_expected.shape == (self.batch_size, 1)
         with tf.GradientTape() as tape1, tf.GradientTape() as tape2:
             tape1.watch(self.Q1.trainable_variables)
@@ -177,47 +176,47 @@ class Agent:
         Q2_gradient = tape2.gradient(loss_Q2, self.Q2.trainable_variables)
         self.Q1_optimizer.apply_gradients(zip(Q1_gradient, self.Q1.trainable_variables))
         self.Q2_optimizer.apply_gradients(zip(Q2_gradient, self.Q2.trainable_variables))
-        del tape1, tape2
 
+        with self.summary_writer.as_default():
+            tf.summary.scalar("Q1 loss", loss_Q1, self.steps)
+            tf.summary.scalar("Q2 loss", loss_Q2, self.steps)
+
+    @tf.function
+    def actor_learn(self, states):
         with tf.GradientTape() as actor_tape:
             actor_tape.watch(self.Actor.trainable_variables)
             predicted_actions, predicted_log_pi = self.Actor.sample_action(states)
             Q1_predicted = self.Q1([states, predicted_actions])
             Q2_predicted = self.Q2([states, predicted_actions])
             Q_target = tf.minimum(Q1_predicted, Q2_predicted)
-            actor_loss = tf.reduce_mean(self.alpha*predicted_log_pi - Q_target)
+            actor_loss = tf.reduce_mean(self.alpha * predicted_log_pi - Q_target)
         actor_gradient = actor_tape.gradient(actor_loss, self.Actor.trainable_variables)
         self.Actor_optimizer.apply_gradients(zip(actor_gradient, self.Actor.trainable_variables))
-        del actor_tape
 
+        with self.summary_writer.as_default():
+            tf.summary.scalar("Actor loss", actor_loss, self.steps)
+            tf.summary.scalar("actor_Q_target", tf.reduce_mean(Q_target), self.steps)
+
+    @tf.function
+    def alpha_learn(self, states):
+        predicted_actions, predicted_log_pi = self.Actor.sample_action(states)
         with tf.GradientTape() as alpha_tape:
             alpha_tape.watch(self.alpha)
             alpha_loss = tf.reduce_mean(self.log_alpha * tf.stop_gradient(-predicted_log_pi - self.entropy_target))
         alpha_gradient = alpha_tape.gradient(alpha_loss, [self.log_alpha]) # seems like other people all use log_alpha here
         self.alpha_optimizer.apply_gradients(zip(alpha_gradient, [self.log_alpha]))
         self.alpha.assign(tf.exp(self.log_alpha))
-        del alpha_tape
-        self.update_targets()
 
         with self.summary_writer.as_default():
-            tf.summary.scalar("Q1 loss", loss_Q1, self.steps)
-            tf.summary.scalar("Q2 loss", loss_Q2, self.steps)
-            tf.summary.scalar("Actor loss", actor_loss, self.steps)
             tf.summary.scalar("alpha loss", alpha_loss, self.steps)
             tf.summary.scalar("alpha value", self.alpha, self.steps)
-            tf.summary.scalar("alpha*predicted_log_pi", tf.reduce_mean(self.alpha*predicted_log_pi), self.steps)
-            tf.summary.scalar("actor_Q_target", tf.reduce_mean(Q_target), self.steps)
 
-    #@tf.function
+    @tf.function
     def update_targets(self):
-        self.target_Q1.set_weights([tf.math.multiply(local_weight, self.tau) +
-                                    tf.math.multiply(target_weight, 1-self.tau)
-                                      for local_weight, target_weight in
-                                      zip(self.Q1.get_weights(), self.target_Q1.get_weights())])
-        self.target_Q2.set_weights([tf.math.multiply(local_weight, self.tau) +
-                                    tf.math.multiply(target_weight, 1-self.tau)
-                                      for local_weight, target_weight in
-                                      zip(self.Q2.get_weights(), self.target_Q2.get_weights())])
+        for local_weight, target_weight in zip(self.Q1.trainable_variables, self.target_Q1.trainable_variables):
+            target_weight.assign(self.tau*local_weight + (1.0 - self.tau) * target_weight)
+        for local_weight, target_weight in zip(self.Q2.trainable_variables, self.target_Q2.trainable_variables):
+            target_weight.assign(self.tau*local_weight + (1.0 - self.tau) * target_weight)
 
     def get_discrete_action(self, Q_value):
         if self.env.current_step is 0:  # must at least separate first stream
@@ -228,7 +227,6 @@ class Agent:
             else:  # submit
                 action_discrete = 1
             return action_discrete
-
 
 
     def save_memory(self):

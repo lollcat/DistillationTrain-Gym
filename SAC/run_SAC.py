@@ -1,10 +1,10 @@
 
-# tensorboard --logdir SAC/logs
+# tensorboard --logdir logs
 import time
 from Utils.BFD_maker import Visualiser
 from SAC.SAC_Agent.Agent import Agent
-SAC = Agent(total_eps=500, batch_size=64, max_mem_length=1e4, min_mem_length=1e3,
-            description="SAC_using_log_alpha_change_and_min_memory")
+SAC = Agent(total_eps=800, batch_size=64, max_mem_length=1e4, use_load_memory=True,
+            description="Fixed env")
 #SAC = Agent(total_eps=2, batch_size=2)
 SAC.run()
 SAC.test_run()
