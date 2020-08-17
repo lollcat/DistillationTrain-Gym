@@ -17,7 +17,7 @@ Using COCO simulator and ChemSep to simulate hydrocarbon distillation train proc
     - Actually quite difficult to do
   - [ ] Run with varying starting streams
   - [ ] Change action variables (i.e. not reflux ratio etc)
-    - but other variables aren't ratios so seem like they don't necessarily "make sense" as action variables
+    - but other variables aren't ratios so seem like they don't necessarily "make sense" as action variables (e.g. condensor duty would be weird for the agent to choose)
     - maybe ask for advice here
 
 ### Long Term
