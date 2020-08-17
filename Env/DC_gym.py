@@ -55,6 +55,8 @@ class DC_Gym(SimulatorDC):
         self.error_counter = {"total_solves": 0,
                               "error_solves": 0}  # to get a general idea of how many solves are going wrong
         self.current_step = 0
+        self.total_revenue = 0
+        self.total_TAC = 0
 
         self.reward_norm = 0
         self.max_total_revenue = 0
@@ -66,14 +68,15 @@ class DC_Gym(SimulatorDC):
                 self.reward_norm = stream_revenue  # set reward normalisation to the max possible single reward
             self.max_total_revenue += stream_revenue
 
+
     def step(self, action):
         continuous_actions, discrete_action = action
         if discrete_action == self.discrete_action_space.n - 1:  # submit
             self.current_step += 1
             done = self.State.submit_stream()  # if this results in 0 outlet streams then done
             info = {}
-            revenue = 0
-            TAC = 0
+            revenue = 0.0
+            TAC = 0.0
             next_state = self.State.state
             if self.simple_state:
                 return ("NA", "NA"), revenue, TAC, done, info
@@ -100,8 +103,8 @@ class DC_Gym(SimulatorDC):
         if sucessful_solve is False:
             self.failed_solves += 1
             self.error_counter["error_solves"] += 1
-            TAC = 0
-            revenue = 0
+            TAC = 0.0
+            revenue = 0.0
             if self.failed_solves >= 3: # reset if we fail 3 times
                 print("3 failed solves")
                 done = True
@@ -170,8 +173,9 @@ class DC_Gym(SimulatorDC):
             done = False
         self.State.add_column_data(selected_stream.number, tops.number, bottoms.number,
                                (n_stages, reflux_ratio, reboil_ratio, tops_pressure), TAC)
-
-        return next_state, annual_revenue/self.reward_norm, -TAC/self.reward_norm, done, info  # convert rewards to million $
+        self.total_revenue += annual_revenue
+        self.total_TAC += TAC
+        return next_state, annual_revenue/self.reward_norm, -TAC/self.reward_norm, done, info
 
     def get_real_continuous_actions(self, continuous_actions):
         # interpolation
@@ -204,6 +208,8 @@ class DC_Gym(SimulatorDC):
         self.column_streams = []
         self.failed_solves = 0
         self.current_step = 0
+        self.total_revenue = 0
+        self.total_TAC = 0
         return self.State.state.copy()
 
     def reward_calculator(self, inlet_flow, tops_flow, bottoms_flow, TAC):

@@ -52,16 +52,16 @@ class State:
             if self.n_streams > 0:
                 self.state = np.array([list(self.streams[0].flows/self.flow_norm) +
                                                          [self.streams[0].temperature/self.temp_norm, self.streams[0].pressure/self.pressure_norm]
-                                                     ])
+                                                     ], dtype="float32")
             else:
-                self.state = np.zeros(self.state.shape)
+                self.state = np.zeros(self.state.shape, dtype="float32")
         else:
             self.state = np.zeros(self.state.shape)
             if self.n_streams > 0:
                 self.state[0:self.n_streams] = np.array([list(stream.flows / self.flow_norm) +
                                        [stream.temperature / self.temp_norm,
                                         stream.pressure / self.pressure_norm]
-                                       for stream in self.streams])
+                                       for stream in self.streams], dtype="float32")
 
     def update_streams(self, new_streams, is_product=(False, False)):
         self.streams.popleft()
@@ -81,10 +81,10 @@ class State:
         assert self.simple_state is True
         tops_state = np.array([list(tops.flows / self.flow_norm) +
                          [tops.temperature / self.temp_norm, tops.pressure / self.pressure_norm]
-                         ])
+                         ], dtype="float32")
         bottoms_state = np.array([list(bottoms.flows / self.flow_norm) +
                             [bottoms.temperature / self.temp_norm, bottoms.pressure / self.pressure_norm]
-                            ])
+                            ], dtype="float32")
         return tops_state, bottoms_state  # for next state
 
 
