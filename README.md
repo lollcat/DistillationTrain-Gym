@@ -14,8 +14,11 @@ Using COCO simulator and ChemSep to simulate hydrocarbon distillation train proc
 ## TODO
 ### Short Term
   - [ ] Create example solution in COCO
+    - Actually quite difficult to do
   - [ ] Run with varying starting streams
   - [ ] Change action variables (i.e. not reflux ratio etc)
+    - but other variables aren't ratios so seem like they don't necessarily "make sense" as action variables
+    - maybe ask for advice here
 
 ### Long Term
   - Not getting speedup from asynchronous run (due to ChemSep + COCO?) 
