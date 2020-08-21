@@ -16,10 +16,11 @@ tf.keras.backend.set_floatx('float32')
 
 class Agent:
     def __init__(self, total_eps=2e2, batch_size=64, max_mem_length=1e4, min_mem_length=1e3, tau=0.005,
-                 Q_lr=3e-4, policy_lr=3e-4, alpha_lr=3e-4, gamma=0.99, description="", use_load_memory=False,
-                 reward_scaling=1, COCO_flowsheet_number=1):
-        standard_args = CONFIG(COCO_flowsheet_number).get_config()
-        self.env = env=DC_Gym(*standard_args, simple_state=True)
+                 Q_lr=3e-4, policy_lr=3e-4, alpha_lr=3e-3, gamma=0.99, description="", use_load_memory=False,
+                 reward_scaling=1, COCO_flowsheet_number=1, discrete_explore=True):
+        self.discrete_explore = discrete_explore  # add randomness to seperate/submit action
+        env_config = CONFIG(COCO_flowsheet_number).get_config()
+        self.env = DC_Gym(*env_config, simple_state=True)
         self.total_eps = int(total_eps)
         self.eps_greedy_stop_step = int(total_eps*3/4)
         self.steps = 0
@@ -30,17 +31,17 @@ class Agent:
         self.min_mem_length = min_mem_length
         self.gamma = gamma
 
-        self.Actor = Actor(env.real_continuous_action_space.shape[0])
+        self.Actor = Actor(self.env.real_continuous_action_space.shape[0])
         self.Q1 = Critic()
         self.Q2 = Critic()
         self.target_Q1 = Critic()
         self.target_Q1.set_weights(self.Q1.get_weights())
         self.target_Q2 = Critic()
         self.target_Q2.set_weights(self.Q2.get_weights())
-        self.log_alpha = tf.Variable(-3.5, dtype=tf.float32)
+        self.log_alpha = tf.Variable(-1, dtype=tf.float32)   # -3.5
         self.alpha = tf.Variable(0, dtype=tf.float32)
         self.alpha.assign(tf.exp(self.log_alpha))
-        self.entropy_target = tf.constant(-np.prod(env.real_continuous_action_space.shape), dtype=tf.float32)
+        self.entropy_target = tf.constant(-np.prod(self.env.real_continuous_action_space.shape), dtype=tf.float32)
 
         self.Q1_optimizer = tf.keras.optimizers.Adam(Q_lr)
         self.Q2_optimizer = tf.keras.optimizers.Adam(Q_lr)
@@ -73,12 +74,8 @@ class Agent:
                 self.steps += 1
                 state = self.env.State.state.copy()
                 action_continuous, log_pi = self.Actor.sample_action(state)
-                if state[:, 0: self.env.n_components].max() * self.env.State.flow_norm <= self.env.min_total_flow * 1.1:
-                    # must submit if there is not a lot of flow, add bit of extra margin to prevent errors
-                    action_discrete = 1
-                else:
-                    Q_value = tf.minimum(self.Q1([state, action_continuous]), self.Q2([state, action_continuous]))
-                    action_discrete = self.get_discrete_action(Q_value)
+                Q_value = tf.minimum(self.Q1([state, action_continuous]), self.Q2([state, action_continuous]))
+                action_discrete = self.get_discrete_action(Q_value, ep)
                 action_continuous = np.squeeze(action_continuous, axis=0)
                 action = action_continuous, action_discrete
                 next_state, annual_revenue, TAC, done, info = self.env.step(action)
@@ -104,10 +101,14 @@ class Agent:
             with self.summary_writer.as_default():
                 tf.summary.scalar("total score", total_score, ep)
                 tf.summary.scalar("episode length", current_step, ep)
-            if total_score > max(self.total_scores):
-                Visualise = Visualiser(self.env)
-                G = Visualise.visualise()
-                G.write_png("./SAC/BFDs/" + self.description + str(time.time()) + "score_" + str(int(total_score)) + ".png")
+            if ep > 0 and total_score > max(self.total_scores):
+                try:
+                    Visualise = Visualiser(self.env)
+                    G = Visualise.visualise()
+                    G.write_png("./SAC/BFDs/" + self.description + str(time.time()) + "score_" + str(round(total_score, 2)) + ".png")
+                except Exception as ex:
+                    print(ex)
+                    print(f"Couldnt draw BFD for total score of value {total_score}")
             self.total_scores.append(total_score)
         self.save_memory()
 
@@ -121,11 +122,7 @@ class Agent:
                 current_step += 1
                 state = self.env.State.state.copy()
                 action_continuous, _ = self.env.sample()
-                if state[:, 0: self.env.n_components].max() * self.env.State.flow_norm <= self.env.min_total_flow * 1.1:
-                    # must submit if there is not a lot of flow, add bit of extra margin to prevent errors
-                    action_discrete = 1
-                else:
-                    action_discrete = np.random.choice([0, 1], p=[0.9, 0.1])
+                action_discrete = np.random.choice([0, 1], p=[0.9, 0.1]) # strong bias to seperating
                 action = action_continuous, action_discrete
                 next_state, annual_revenue, TAC, done, info = self.env.step(action)
                 tops_state, bottoms_state = next_state
@@ -139,6 +136,7 @@ class Agent:
                                              1 - info[0], 1 - info[1]))
                             if len(self.memory.buffer) % (self.min_mem_length/10) == 0:
                                 print(f"memory {len(self.memory.buffer)}/{self.min_mem_length}")
+                                print(f"current score is {total_score}, on step {current_step}")
         pickle.dump(self.memory, open(self.memory_dir + "random_memory.obj", "wb"))
 
     #@tf.function
@@ -235,15 +233,22 @@ class Agent:
         for local_weight, target_weight in zip(self.Q2.trainable_variables, self.target_Q2.trainable_variables):
             target_weight.assign(self.tau*local_weight + (1.0 - self.tau) * target_weight)
 
-    def get_discrete_action(self, Q_value):
+    def get_discrete_action(self, Q_value, ep):
         if self.env.current_step is 0:  # must at least separate first stream
             return 0
-        else:
+        if ep/self.total_eps > 0.5 or self.discrete_explore is False:
             if Q_value > 0:  # separate
                 action_discrete = 0
             else:  # submit
                 action_discrete = 1
-            return action_discrete
+        else:
+            if Q_value > 0:  # separate
+                action_discrete = 0
+            else:  # submit
+                explore_probability = 0.6 - (ep) / (self.total_eps) * 0.5  # start at 60/40 and lower until
+                action_discrete = np.random.choice([0,1], p=[explore_probability, 1-explore_probability])
+
+        return action_discrete
 
 
     def save_memory(self):
@@ -268,15 +273,10 @@ class Agent:
             mean, std = self.Actor(state)
             action_continuous = tf.tanh(mean)
             Q_value = tf.minimum(self.Q1([state, action_continuous]), self.Q2([state, action_continuous]))
-            if state[:, 0: self.env.n_components].max() * self.env.State.flow_norm <= self.env.min_total_flow * 1.1:
-                # must submit if there is not a lot of flow, add bit of extra margin to prevent errors
-                action_discrete = 1
-                print("submitted due to low flow")
+            if Q_value > 0:
+                action_discrete = 0  # seperate if positive reward predicted
             else:
-                if Q_value > 0:
-                    action_discrete = 0  # seperate if positive reward predicted
-                else:
-                    action_discrete = 1
+                action_discrete = 1
             action_continuous = np.squeeze(action_continuous, axis=0)
             action = action_continuous, action_discrete
             next_state, annual_revenue, TAC, done, info = self.env.step(action)

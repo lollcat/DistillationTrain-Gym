@@ -1,6 +1,4 @@
 import numpy as np
-from itertools import permutations
-
 from Env.ClassDefinitions import Stream, State
 from gym import spaces
 
@@ -8,13 +6,13 @@ from Env.DC_class import SimulatorDC
 
 class DC_Gym(SimulatorDC):
     """
-    NB - units of flowsheet must be configured!!!
+    Flowsheet needs to be configured to expose editable unit parameters, and standardise unit naming
     This version of the gym only has a single stream as the state. Discrete actions are just to seperate or not
-    this is currently just inherited by DC_gym_reward
     """
-    def __init__(self, document_path, sales_prices,
-                 annual_operating_hours=8000, required_purity=0.95, simple_state=True, auto_submit=True):
+    def __init__(self, document_path, sales_prices, fail_solve_punishment, required_purity=0.95,
+                 annual_operating_hours=8000, simple_state=True, auto_submit=True):
         super().__init__(document_path)
+        self.fail_solve_punishment = fail_solve_punishment  # has to be configured for specific envs
         self.simple_state = simple_state
         self.auto_submit = auto_submit
         self.sales_prices = sales_prices
@@ -28,11 +26,11 @@ class DC_Gym(SimulatorDC):
                                     )
         self.n_components = len(self.original_feed.flows)
         # now am pretty flexible in number of max streams, to prevent simulation going for long set maximum to 10
-        self.max_outlet_streams = self.n_components*2
+        self.max_outlet_streams = self.n_components*3
         self.stream_table = [self.original_feed]
 
         self.State = State(self.original_feed, self.max_outlet_streams, simple=simple_state)
-        self.min_total_flow = self.State.flow_norm/20  # definately aren't interested in streams with 1/20th of the flow
+        self.min_recovery_flow = self.original_feed.flows/10  # definately aren't interested in streams with 1/10th recovery
 
         if simple_state:
             # Now configure action space
@@ -46,7 +44,7 @@ class DC_Gym(SimulatorDC):
         # pressure drop is as a fraction of the current pressure
         self.continuous_action_names = ['number of stages', 'reflux ratio', 'reboil ratio', 'pressure drop ratio']
         # these will get converted to numbers between -1 and 1
-        self.real_continuous_action_space = spaces.Box(low=np.array([5, 0.1, 0.1, 0]), high=np.array([100, 10, 10, 0.9]),
+        self.real_continuous_action_space = spaces.Box(low=np.array([5, 0.1, 0.1, 0]), high=np.array([200, 10, 10, 0.9]),
                                                        shape=(4,))
         self.continuous_action_space = spaces.Box(low=-1, high=1, shape=(4,))
         # define gym space objects
@@ -86,7 +84,7 @@ class DC_Gym(SimulatorDC):
         self.import_file()  # current workaround is to reset the file before each solve
 
         selected_stream = self.State.streams[discrete_action]
-        assert selected_stream.flows.max() > self.min_total_flow
+        assert selected_stream.flows.max() > self.min_recovery_flow[selected_stream.flows.argmax()]
 
         # put the selected stream (flows, temperature, pressure) as the input to a new column
         real_continuous_actions = self.get_real_continuous_actions(continuous_actions)
@@ -105,11 +103,12 @@ class DC_Gym(SimulatorDC):
             self.error_counter["error_solves"] += 1
             TAC = 0.0
             revenue = 0.0
-            if self.failed_solves >= 3: # reset if we fail 3 times
+            if self.failed_solves >= 3:  # reset if we fail 3 times
+                # discourage these actions with negative reward + ending that streams seperation tree (done, done)
                 print("3 failed solves")
-                done = True
-                TAC = -0.05
-                info = [True, True]  # discourage these actions with negative reward and by saying episode is over
+                done = self.State.submit_stream()  # make stream a product
+                TAC = self.fail_solve_punishment  # have to configure this for each environment
+                info = [True, True]
             else:
                 done = False
                 info = {"failed solve": 1}
@@ -118,9 +117,9 @@ class DC_Gym(SimulatorDC):
                 # basically like returning state as tops, 0 as bottoms because nothing has happened in the seperation
                 tops = next_state.copy()
                 bottoms = np.zeros(tops.shape)
-                return (tops, bottoms), revenue, TAC, done, info
+                return (tops, bottoms), revenue, -TAC, done, info
             else:
-                return next_state, revenue, TAC, done, info
+                return next_state, revenue, -TAC, done, info
 
         self.current_step += 1  # if there is a sucessful solve then step the counter
         # TAC includes operating costs so we actually don't need these duties
@@ -134,16 +133,16 @@ class DC_Gym(SimulatorDC):
 
 
         if self.auto_submit is True:
-
+            # always working with this option for now
             tops_revenue = self.stream_value(tops_flow)
             bottoms_revenue = self.stream_value(bottoms_flow)
             annual_revenue = tops_revenue + bottoms_revenue
             if self.State.n_total_streams < self.max_outlet_streams:
-                # if max streams not yet reached then only streams with revenue are product
+                # if max streams not yet reached then only streams with revenue or not enough flow are product
                 is_product = [False, False]
-                if tops_revenue > 0:
+                if tops_revenue > 0 or tops_flow.max() <= self.min_recovery_flow[tops_flow.argmax()]:
                     is_product[0] = True
-                if bottoms_revenue > 0:
+                if bottoms_revenue > 0 or bottoms_flow.max() <= self.min_recovery_flow[bottoms_flow.argmax()]:
                     is_product[1] = True
             else:
                 is_product = [True, True]  # once max streams reached then each columns new streams have to be product
@@ -155,6 +154,7 @@ class DC_Gym(SimulatorDC):
             info = {}
 
         if self.simple_state is True:
+            # always working with this for now, will have to do checks if we want to change to complex state
             next_state = self.State.get_next_state(tops, bottoms)
         else:
             next_state = self.State.state
@@ -164,7 +164,6 @@ class DC_Gym(SimulatorDC):
             (selected_stream.flows-(tops.flows+bottoms.flows)) / np.maximum(selected_stream.flows, 0.01)) # max to prevent divide by 0
         if mass_balance_rel_error.max() >= 0.05:
             print("MB error!!!")
-        #assert mass_balance_rel_error.max() < 0.05, f"Max error: {mass_balance_rel_error.max()}"
 
         if self.State.n_streams == 0:
             # episode done when no streams left

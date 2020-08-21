@@ -89,6 +89,7 @@ class State:
 
 
     def submit_stream(self):
+        # submit current stream as end product
         self.final_outlet_streams.append(self.streams[0])
         self.streams.popleft()
         self.create_state()

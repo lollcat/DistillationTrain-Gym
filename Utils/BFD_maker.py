@@ -21,7 +21,7 @@ class Visualiser:
         G.add_node(feed_node)
         for i, column_info in enumerate(self.env.State.column_data):
             label = f'Column {i + 1} \nn_stages {column_info.n_stages} \nRR ' +  str(round(column_info.reflux_ratio, 1)) + ' \n' + \
-                    f"BR " + str(round(column_info.reboil_ratio, 1)) + f"\nTAC $ " + str(round(column_info.TAC/1e6, 1))+ " M"
+                    f"BR " + str(round(column_info.reboil_ratio, 1)) + f"\nTAC $ " + str(round(column_info.TAC/1e6, 2))+ " M"
             nodes.append(pydot.Node(label, shape="square"))
             G.add_node(nodes[i])
             if i > 0:
@@ -44,7 +44,7 @@ class Visualiser:
         for outlet_stream in self.env.State.final_outlet_streams:
             column_link, loc = self.find_column(outlet_stream.number)
             label = f"{outlet_stream.number} \n" + f"revenue $" + \
-                    str(round(self.env.stream_value(outlet_stream.flows)/1e6, 1)) + \
+                    str(round(self.env.stream_value(outlet_stream.flows)/1e6, 2)) + \
                     " M\n" + \
                     "".join([str(round(flow, 2)) + " mol/s \n" for flow in outlet_stream.flows])
             outlet_nodes.append(
@@ -55,7 +55,7 @@ class Visualiser:
 
         for outlet_stream in self.env.State.streams:
             label = f"{outlet_stream.number} \n" +f"revenue $" + \
-                    str(round(self.env.stream_value(outlet_stream.flows)/1e6, 1)) + \
+                    str(round(self.env.stream_value(outlet_stream.flows)/1e6, 2)) + \
                     " M\n" + \
                     "".join([str(round(flow, 2)) + " mol/s \n" for flow in outlet_stream.flows])
             column_link, loc = self.find_column(outlet_stream.number)
