@@ -15,6 +15,7 @@ Using COCO simulator and ChemSep to simulate hydrocarbon distillation train proc
 ### Short Term
   - [ ] Create example solution in COCO
     - Actually quite difficult to do
+    - If we do Luyben example then the paper can act as an example solution
   - [ ] Run with varying starting streams
     - New Luyben ChemSep hydrocarbon problem looks good
     - Even one of the ChemSep examples with 3 streams could be good as simple example
