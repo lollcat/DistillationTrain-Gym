@@ -8,8 +8,8 @@ Using COCO simulator and ChemSep for Simulation
 <br>
 
 ## Summary
- - Given a pre-defined starting stream and flowsheet thermophysical property specification. Design a distillation column train that maximises (revenue - total annual cost)
- - Revenue is defined for a specific defined product purity (e.g. 95% ethane can be sold for X $).
+ - Given a pre-defined starting stream, product definition (required purity and selling price) and flowsheet thermophysical property specification. Design a distillation column train that maximises (revenue - total annual cost)
+ - Revenue is calculated when new streams are produced according to the product definition
  - TAC is calculated by ChemSep
  - During each step the agent is given (as the (partial) observation of the environments current state) one of the process outlet stream for which it has to decide whether or not to seperate
     - If the agent decides to seperate the stream, it then has to select an operating pressure (controlled by a valve before the column) and column specification (number of stages, reflux ratio and reboil ratio). 
