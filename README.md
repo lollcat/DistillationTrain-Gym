@@ -29,6 +29,7 @@ Interstingly the current best solution uses 3 columms instead of the expected 2 
     
 ## TODO
 ### Short Term
+  - [ ] Write out this README fully
   - [ ] Create example solution in COCO
     - Actually quite difficult to do
     - If we do Luyben example then the paper can act as an example solution
