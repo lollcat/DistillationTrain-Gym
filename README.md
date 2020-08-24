@@ -2,7 +2,7 @@
 <br>
 Currently being build
 <br>
-Designing chemical engineering processes with reinforcement learning
+Designing chemical engineering distillation processes with reinforcement learning
 <br>
 Using COCO simulator and ChemSep for Simulation
 <br>
