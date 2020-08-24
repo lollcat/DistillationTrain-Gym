@@ -3,7 +3,6 @@
 *.xml
 *.iml
 *.ipynb
-*.png
 *idea
 *.ipynb
 *.pptx
