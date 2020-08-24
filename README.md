@@ -16,7 +16,7 @@ Using COCO simulator and ChemSep for Simulation
     - If the agent decides not to seperate the stream it becomes an outlet stream for the final process design
  - To simplfy the state a tree structure Markov Decision Process was created (*Explain further*)
  
-## Problem
+## Example Problems
 Distillation-Gym can be applied to any initial starting stream component selection and composition. The following examples are given:
 ### Benzene Toluene p-Xylene (taken from [ChemSep Examples](http://www.chemsep.org/downloads/index.html))
 Interstingly the current best solution uses 3 columms instead of the expected 2 columns 
