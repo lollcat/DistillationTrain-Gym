@@ -24,7 +24,7 @@ class SimulatorDC:
         CoInitialize()
         self.doc = comtypes.client.CreateObject('COCO_COFE.Document', interface=cofeTypes.ICOFEDocument)
         self.import_file()
-        self.original_conditions = self.get_inlet_stream_conditions()
+        self.original_conditions = self.get_stream_conditions()
         self.max_pressure = self.doc.GetUnit('Valve_1').QueryInterface(
             coTypes.ICapeUtilities).Parameters.QueryInterface(coTypes.ICapeCollection).Item(
             "Pressure").QueryInterface(coTypes.ICapeParameter).value
@@ -45,13 +45,13 @@ class SimulatorDC:
         except COMError:
             print("Error:", self.doc.GetStream('1').QueryInterface(coTypes.ECapeRoot).name)
 
-    def get_inlet_stream_conditions(self):
+    def get_stream_conditions(self, stream_number='1'):
         conditions = {
-                "flows": np.array(self.doc.GetStream('1').QueryInterface(coTypes.ICapeThermoMaterial).
+                "flows": np.array(self.doc.GetStream(stream_number).QueryInterface(coTypes.ICapeThermoMaterial).
                     GetOverallProp("flow", self.quantity_basis)),
-                "temperature": self.doc.GetStream('1').QueryInterface(coTypes.ICapeThermoMaterial).
+                "temperature": self.doc.GetStream(stream_number).QueryInterface(coTypes.ICapeThermoMaterial).
                     GetOverallProp("temperature", "")[0],
-                "pressure": self.doc.GetStream('1').QueryInterface(coTypes.ICapeThermoMaterial).
+                "pressure": self.doc.GetStream(stream_number).QueryInterface(coTypes.ICapeThermoMaterial).
                     GetOverallProp("pressure", "")[0]
                     }
         return conditions
@@ -105,7 +105,7 @@ class SimulatorDC:
         return n_stages, reflux_ratio, reboil_ratio, pressure_drop
 
     def set_unit_inputs(self, n_stages, reflux_ratio, reboil_ratio, pressure_drop_ratio):
-        column_pressure = self.get_inlet_stream_conditions()["pressure"]*(1-pressure_drop_ratio)
+        column_pressure = self.get_stream_conditions()["pressure"] * (1 - pressure_drop_ratio)
         assert column_pressure > 0
 
         self.doc.GetUnit('Column_1').QueryInterface(coTypes.ICapeUtilities).Parameters.QueryInterface(

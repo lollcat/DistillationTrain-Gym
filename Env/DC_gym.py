@@ -19,7 +19,7 @@ class DC_Gym(SimulatorDC):
         self.required_purity = required_purity
         self.annual_operating_seconds = annual_operating_hours*3600
 
-        feed_conditions = self.get_inlet_stream_conditions()
+        feed_conditions = self.get_stream_conditions()
         self.original_feed = Stream(1, feed_conditions["flows"],
                                     feed_conditions["temperature"],
                                     feed_conditions["pressure"]
@@ -170,8 +170,11 @@ class DC_Gym(SimulatorDC):
             done = True
         else:
             done = False
-        self.State.add_column_data(selected_stream.number, tops.number, bottoms.number,
-                               (n_stages, reflux_ratio, reboil_ratio, tops_pressure), TAC)
+        column_inlet_conditions = self.get_stream_conditions('4')
+        self.State.add_column_data(in_number=selected_stream.number, tops_number=tops.number,
+                                   bottoms_number=bottoms.number, n_stages=n_stages, reflux_ratio=reflux_ratio,
+                                   reboil_ratio=reboil_ratio, OperatingPressure=column_inlet_conditions["pressure"],
+                                   InletTemperature=column_inlet_conditions["temperature"], TAC=TAC)
         self.total_revenue += annual_revenue
         self.total_TAC += TAC
         return next_state, annual_revenue/self.reward_norm, -TAC/self.reward_norm, done, info

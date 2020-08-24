@@ -1,6 +1,11 @@
 import numpy as np
 from collections import deque
 
+class Valve:
+    def __init__(self, StreamNumber, Tout, Pout):
+        self.StreamNumber = StreamNumber
+        self.Outlet_Temperature = Tout
+        self.Outlet_Pressure = Pout
 
 class Stream:
     def __init__(self, number, flows, temperature, pressure):
@@ -16,14 +21,15 @@ class Stream:
         self.pressure = pressure
 
 class Column:
-    def __init__(self, in_number, tops_number, bottoms_number, actions, TAC):
+    def __init__(self, in_number, tops_number, bottoms_number, n_stages, reflux_ratio, reboil_ratio, OperatingPressure, InletTemperature, TAC):
         self.inlet_number = in_number
         self.tops_number = tops_number
         self.bottoms_number = bottoms_number
-        self.n_stages = actions[0]
-        self.reflux_ratio = actions[1]
-        self.reboil_ratio = actions[2]
-        self.inlet_pressure = actions[3]
+        self.n_stages = n_stages
+        self.reflux_ratio = reflux_ratio
+        self.reboil_ratio = reboil_ratio
+        self.OperatingPressure = OperatingPressure
+        self.InletTemperature = InletTemperature
         self.TAC = TAC
 
 class State:
@@ -98,8 +104,15 @@ class State:
         else:
             return False
 
-    def add_column_data(self, in_number, tops_number, bottoms_number, actions, TAC):
-        self.column_data.append(Column(in_number, tops_number, bottoms_number, actions, TAC))
+    """
+    def add_valve_data(self, inlet_StreamNumber, Tout, Pout):
+        self.valves.append(Valve(inlet_StreamNumber, Tout, Pout))
+    """
+
+    def add_column_data(self, in_number, tops_number, bottoms_number, n_stages, reflux_ratio, reboil_ratio,
+                        OperatingPressure, InletTemperature, TAC):
+        self.column_data.append(Column(in_number, tops_number, bottoms_number, n_stages, reflux_ratio, reboil_ratio,
+                                       OperatingPressure, InletTemperature, TAC))
 
     @property
     def n_streams(self):

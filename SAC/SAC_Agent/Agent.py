@@ -122,7 +122,13 @@ class Agent:
                 current_step += 1
                 state = self.env.State.state.copy()
                 action_continuous, _ = self.env.sample()
-                action_discrete = np.random.choice([0, 1], p=[0.9, 0.1]) # strong bias to seperating
+                action_discrete = 0  # always seperate until episode is over
+                """
+                if current_step == 0:
+                    action_discrete = 0
+                else:
+                    action_discrete = np.random.choice([0, 1], p=[0.95, 0.05]) # strong bias to seperating
+                """
                 action = action_continuous, action_discrete
                 next_state, annual_revenue, TAC, done, info = self.env.step(action)
                 tops_state, bottoms_state = next_state
@@ -234,7 +240,7 @@ class Agent:
             target_weight.assign(self.tau*local_weight + (1.0 - self.tau) * target_weight)
 
     def get_discrete_action(self, Q_value, ep):
-        if self.env.current_step is 0:  # must at least separate first stream
+        if self.env.current_step == 0:  # must at least separate first stream
             return 0
         if ep/self.total_eps > 0.5 or self.discrete_explore is False:
             if Q_value > 0:  # separate
@@ -242,11 +248,16 @@ class Agent:
             else:  # submit
                 action_discrete = 1
         else:
+            # for first half always seperate (this can never create errors to early episode Q-values,
+            # because negative Q values don't effect early ones due to the max(0, Qnext)
+            action_discrete = 0
+            """
             if Q_value > 0:  # separate
                 action_discrete = 0
             else:  # submit
                 explore_probability = 0.6 - (ep) / (self.total_eps) * 0.5  # start at 60/40 and lower until
                 action_discrete = np.random.choice([0,1], p=[explore_probability, 1-explore_probability])
+            """
 
         return action_discrete
 

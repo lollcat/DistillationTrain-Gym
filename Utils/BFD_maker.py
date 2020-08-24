@@ -13,14 +13,16 @@ class Visualiser:
         edges = []
         image_list = []
         if show_all is True:
-            feed_string = "feed \n" + "".join([self.env.compound_names[i] + " " + str(round(flow, 2)) + " mol/s \n"
+            feed_string = "feed \n" + f"{int(self.env.original_feed.temperature)} K, {int(self.env.original_feed.pressure/1e3)} kPa\n" + "".join([self.env.compound_names[i] + " " + str(round(flow, 2)) + " mol/s \n"
                                                for i, flow in enumerate(self.env.original_feed.flows)])
         else:
             feed_string = " "
         feed_node = pydot.Node(feed_string, shape="square", color="white")
         G.add_node(feed_node)
         for i, column_info in enumerate(self.env.State.column_data):
-            label = f'Column {i + 1} \nn_stages {column_info.n_stages} \nRR ' +  str(round(column_info.reflux_ratio, 1)) + ' \n' + \
+            label = f'Column {i + 1} \n Tin {int(column_info.InletTemperature)} K, ' \
+                    f'Pressure {int(column_info.OperatingPressure)} kPa' \
+                    f'\n n_stages {column_info.n_stages} \n' + f'RR ' +  str(round(column_info.reflux_ratio, 1)) + ' \n' + \
                     f"BR " + str(round(column_info.reboil_ratio, 1)) + f"\nTAC $ " + str(round(column_info.TAC/1e6, 2))+ " M"
             nodes.append(pydot.Node(label, shape="square"))
             G.add_node(nodes[i])
@@ -30,7 +32,7 @@ class Visualiser:
                 if show_all is True:
                     stream_info = self.env.State.all_streams[stream_in-1]
                     assert stream_info.number == stream_in
-                    stream_label = f"stream {stream_info.number} \n" + f"{int(stream_info.temperature)} K {int(stream_info.pressure)} Pa \n" + "".join(
+                    stream_label = f"stream {stream_info.number} \n" + f"{int(stream_info.temperature)} K, {int(stream_info.pressure)/1e3} kPa \n" + "".join(
                         [str(round(flow, 2)) + " mol/s \n" for flow in stream_info.flows])
                 else:
                     stream_label = int(stream_in + 1)
