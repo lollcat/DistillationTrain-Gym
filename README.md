@@ -4,9 +4,25 @@ Currently being build
 <br>
 Designing chemical engineering processes with reinforcement learning
 <br>
-Using COCO simulator and ChemSep to simulate hydrocarbon distillation train process synthesis problem
+Using COCO simulator and ChemSep for Simulation
 <br>
 
+## Summary
+ - Given a pre-defined starting stream and flowsheet thermophysical property specification. Design a distillation column train that maximises (revenue - total annual cost)
+ - Revenue is defined for a specific defined product purity (e.g. 95% ethane can be sold for X $).
+ - TAC is calculated by ChemSep
+ - During each step the agent is given (as the (partial) observation of the environments current state) one of the process outlet stream for which it has to decide whether or not to seperate
+    - If the agent decides to seperate the stream, it then has to select an operating pressure (controlled by a valve before the column) and column specification (number of stages, reflux ratio and reboil ratio). 
+    - If the agent decides not to seperate the stream it becomes an outlet stream for the final process design
+ - To simplfy the state a tree structure Markov Decision Process was created (*Explain further*)
+ 
+## Problem
+Distillation-Gym can be applied to any initial starting stream component selection and composition. The following examples are given:
+### Benzene Toluene p-Xylene (taken from [ChemSep Examples](http://www.chemsep.org/downloads/index.html))
+Interstingly the current best solution uses 3 columms instead of the expected 2 columns 
+ ![alt text](https://github.com/lollcat/DistillationTrain-Gym/blob/Feature-double_done/SAC/BFDs/CONFIG3/SAC_CONFIG_3___high_alpha_lr1598053716.1167474score_2.42.png "Benzene Toluene p-Xylene Final Design")
+ 
+ 
 ## Agents
   - Soft Actor Critic (SAC)
   - Deep Deterministic Policy Gradient (DDPG)
