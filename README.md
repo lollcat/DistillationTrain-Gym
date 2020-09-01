@@ -33,15 +33,13 @@ Interstingly the current best solution uses 3 columms instead of the expected 2 
   - [ ] Create example solution in COCO
     - Actually quite difficult to do
     - If we do Luyben example then the paper can act as an example solution
-  - [ ] Run with varying starting streams
-    - New Luyben ChemSep hydrocarbon problem looks good
-    - Even one of the ChemSep examples with 3 streams could be good as simple example
+
+
+### Long Term
   - [ ] Change action variables (i.e. not reflux ratio etc)
     - but other variables aren't ratios so seem like they don't necessarily "make sense" as action variables (e.g. condensor duty would be weird for the agent to choose)
     - selecting component splits would be cool but seems like just gives solve errors with ThomsonKing example
     - maybe ask for advice here
-
-### Long Term
   - Not getting speedup from asynchronous run (due to ChemSep + COCO?) 
   - Once asynch problem with simulators gets fixed will need to rewrite all the asynch code as it is now all old + buggy + requires many updates
  
