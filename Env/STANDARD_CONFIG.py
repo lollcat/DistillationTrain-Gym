@@ -12,18 +12,17 @@ class CONFIG:
     def get_config(self):
         if self.config_number == 0:  # ChemSepExample
             # currently from thesis code, just copying iso & n butane to be same values
-            compound_names = ["Methane", "Ethane", "Propane", "Isobutane", "Butane",  "Iso-Pentane", "N-pentane"]
-            Molar_weights = np.array([16.043, 30.07, 44.097, 58.124, 58.124, 72.151, 72.151]) #g/mol
-            Heating_value = np.array([55.6,  51.9, 50.4, 49.5, 49.4,   55.2, 55.2]) #MJ/kg
-            Price_per_MBTU = np.array([2.83, 2.54, 4.27, 5.79, 5.31,  10.41, 10.41])  #  $/Million Btu
+            compound_names = ["Ethane", "Propane", "Isobutane", "Butane",  "Iso-Pentane", "N-pentane"]
+            Molar_weights = np.array([30.07, 44.097, 58.124, 58.124, 72.151, 72.151]) #g/mol
+            Heating_value = np.array([51.9, 50.4, 49.5, 49.4,   55.2, 55.2]) #MJ/kg
+            Price_per_MBTU = np.array([2.54, 4.27, 5.79, 5.31,  10.41, 10.41])  #  $/Million Btu
             MJ_per_MBTU = 1055.06
             # units $/MBTU * MBTU/MJ * MJ/kg * kg/g * g/mol  = $/mol
             sales_prices = Price_per_MBTU/MJ_per_MBTU * Heating_value * (Molar_weights/1000)  # now in $/mol
-
-
+            required_purity = 0.95
             COCO_file = os.path.join(os.getcwd(), "Env\LuybenExamplePart.fsd")
             fail_solve_penalty = 0.5
-            standard_args = COCO_file, sales_prices, fail_solve_penalty
+            standard_args = COCO_file, sales_prices, fail_solve_penalty, required_purity
             return standard_args
 
         elif self.config_number == 1:  # ThomsonKing example
@@ -40,7 +39,7 @@ class CONFIG:
             standard_args = COCO_file, sales_prices, fail_solve_penalty
             return standard_args
 
-        elif self.config_number == 2:  # Luyben hydrocarbon example
+        elif self.config_number == 2:  # loosely based on Luyben hydrocarbon example
             compound_names = ["Methane", "Ethane", "Propane", "Isobutane", "N-butane", "Iso-pentane", "N-pentane", "N-hexane", "n-heptane", "Nitrogen"]
             Heating_value = np.array([55.6, 51.9, 50.4, 49.5, 49.4, 55.2, 55.2, 47.7, 48.5])  # MJ/kg
             Price_per_MBTU = np.array([2.83, 2.54, 4.27, 5.79, 5.31, 10.41, 10.41, 10.41, 10.41])  # $/Million Btu
@@ -63,6 +62,20 @@ class CONFIG:
             sales_prices = sales_prices_per_g * molar_mass # now in $/mol
             COCO_file = os.path.join(os.getcwd(), "Env\Benzene_Toluene_P_xylene.fsd")
             fail_solve_penalty = 0.5
-            required_purity = 0.98
+            required_purity = 0.95
             standard_args = COCO_file, sales_prices, fail_solve_penalty, required_purity
             return standard_args
+
+        elif self.config_number == 4: # Air seperation unit
+            compound_names = ["Nitrogen", "Oxygen", "Argon"]
+            #https: // en.wikipedia.org / wiki / Prices_of_chemical_elements
+            molar_mass = np.array([14, 16, 40])
+            sales_prices_per_g = np.array([0.140, 0.154, 0.931])/1000  #$/g
+            sales_prices = sales_prices_per_g * molar_mass # now in $/mol
+            COCO_file = os.path.join(os.getcwd(), "Env\ASU.fsd")
+            fail_solve_penalty = 0.5
+            required_purity = 0.985
+            standard_args = COCO_file, sales_prices, fail_solve_penalty, required_purity
+            return standard_args
+
+

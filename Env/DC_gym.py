@@ -30,7 +30,7 @@ class DC_Gym(SimulatorDC):
         self.stream_table = [self.original_feed]
 
         self.State = State(self.original_feed, self.max_outlet_streams, simple=simple_state)
-        self.min_recovery_flow = self.original_feed.flows/10  # definately aren't interested in streams with 1/10th recovery
+        self.min_recovery_flow = self.original_feed.flows/100  # definately aren't interested in streams with 1/100th recovery
 
         if simple_state:
             # Now configure action space

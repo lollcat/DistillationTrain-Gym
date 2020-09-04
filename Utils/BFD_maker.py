@@ -21,7 +21,7 @@ class Visualiser:
         G.add_node(feed_node)
         for i, column_info in enumerate(self.env.State.column_data):
             label = f'Column {i + 1} \n Tin {int(column_info.InletTemperature)} K, ' \
-                    f'Pressure {int(column_info.OperatingPressure)} kPa' \
+                    f'Pressure {int(column_info.OperatingPressure/1e3)} kPa' \
                     f'\n n_stages {column_info.n_stages} \n' + f'RR ' +  str(round(column_info.reflux_ratio, 1)) + ' \n' + \
                     f"BR " + str(round(column_info.reboil_ratio, 1)) + f"\nTAC $ " + str(round(column_info.TAC/1e6, 2))+ " M"
             nodes.append(pydot.Node(label, shape="square"))
@@ -45,14 +45,14 @@ class Visualiser:
         # add outlet streams
         for outlet_stream in self.env.State.final_outlet_streams:
             column_link, loc = self.find_column(outlet_stream.number)
-            label = f"{outlet_stream.number} \n" + f"revenue $" + \
+            label = f"stream {outlet_stream.number} \n" + f"revenue $" + \
                     str(round(self.env.stream_value(outlet_stream.flows)/1e6, 2)) + \
                     " M\n" + \
                     "".join([str(round(flow, 2)) + " mol/s \n" for flow in outlet_stream.flows])
             outlet_nodes.append(
                 pydot.Node(label, shape="box", color="white"))
             G.add_node(outlet_nodes[-1])
-            G.add_edge(pydot.Edge(nodes[column_link], outlet_nodes[-1], label=f" Submitted {outlet_stream.number}"
+            G.add_edge(pydot.Edge(nodes[column_link], outlet_nodes[-1], label=f""
                                   ,headport="w", tailport=loc))
 
         for outlet_stream in self.env.State.streams:

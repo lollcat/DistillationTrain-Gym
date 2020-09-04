@@ -17,7 +17,8 @@ tf.keras.backend.set_floatx('float32')
 class Agent:
     def __init__(self, total_eps=2e2, batch_size=64, max_mem_length=1e4, min_mem_length=1e3, tau=0.005,
                  Q_lr=3e-4, policy_lr=3e-4, alpha_lr=3e-3, gamma=0.99, description="", use_load_memory=False,
-                 reward_scaling=1, COCO_flowsheet_number=1, discrete_explore=True):
+                 reward_scaling=1, COCO_flowsheet_number=1, discrete_explore=True, extra_explore_noise=False):
+        self.extra_explore_noise = extra_explore_noise
         self.discrete_explore = discrete_explore  # add randomness to seperate/submit action
         env_config = CONFIG(COCO_flowsheet_number).get_config()
         self.env = DC_Gym(*env_config, simple_state=True)
@@ -74,6 +75,9 @@ class Agent:
                 self.steps += 1
                 state = self.env.State.state.copy()
                 action_continuous, log_pi = self.Actor.sample_action(state)
+                if self.extra_explore_noise is True and ep/self.total_eps < 0.5:
+                    noise = 0.3 * np.random.normal(0, 1, size=action_continuous.shape)
+                    action_continuous = np.clip(action_continuous + noise, a_min=-1, a_max=1)
                 Q_value = tf.minimum(self.Q1([state, action_continuous]), self.Q2([state, action_continuous]))
                 action_discrete = self.get_discrete_action(Q_value, ep)
                 action_continuous = np.squeeze(action_continuous, axis=0)
@@ -98,18 +102,19 @@ class Agent:
                                 tf.summary.scalar('revenue', annual_revenue, step=self.steps)
                 self.learn()
 
-            with self.summary_writer.as_default():
-                tf.summary.scalar("total score", total_score, ep)
-                tf.summary.scalar("episode length", current_step, ep)
-            if ep > 0 and total_score > max(self.total_scores):
-                try:
-                    Visualise = Visualiser(self.env)
-                    G = Visualise.visualise()
-                    G.write_png("./SAC/BFDs/" + self.description + str(time.time()) + "score_" + str(round(total_score, 2)) + ".png")
-                except Exception as ex:
-                    print(ex)
-                    print(f"Couldnt draw BFD for total score of value {total_score}")
-            self.total_scores.append(total_score)
+            if not (total_score == 0 and current_step == 1):  # fail solve from the start
+                with self.summary_writer.as_default():
+                    tf.summary.scalar("total score", total_score, ep)
+                    tf.summary.scalar("episode length", current_step, ep)
+                if len(self.total_scores) > 0 and total_score > max(self.total_scores):
+                    try:
+                        Visualise = Visualiser(self.env)
+                        G = Visualise.visualise()
+                        G.write_png("./SAC/BFDs/" + self.description + str(time.time()) + "score_" + str(round(total_score, 2)) + ".png")
+                    except Exception as ex:
+                        print(ex)
+                        print(f"Couldnt draw BFD for total score of value {total_score}")
+                self.total_scores.append(total_score)
         self.save_memory()
 
     def fill_memory(self):
@@ -248,7 +253,7 @@ class Agent:
             else:  # submit
                 action_discrete = 1
         else:
-            # for first half always seperate (this can never create errors to early episode Q-values,
+            # for first portion of training always seperate (this can never create errors to early episode Q-values,
             # because negative Q values don't effect early ones due to the max(0, Qnext)
             action_discrete = 0
             """
@@ -258,7 +263,6 @@ class Agent:
                 explore_probability = 0.6 - (ep) / (self.total_eps) * 0.5  # start at 60/40 and lower until
                 action_discrete = np.random.choice([0,1], p=[explore_probability, 1-explore_probability])
             """
-
         return action_discrete
 
 
