@@ -23,8 +23,10 @@ Using COCO simulator and ChemSep for Simulation
 ## Example Problems
 Distillation-Gym can be applied to any initial starting stream component selection and composition. The following examples are given:
 ### Benzene Toluene p-Xylene (taken from [ChemSep Examples](http://www.chemsep.org/downloads/index.html))
-Interstingly the current best solution uses 3 columms instead of the expected 2 columns 
- ![alt text](https://github.com/lollcat/DistillationTrain-Gym/blob/Feature-double_done/SAC/BFDs/CONFIG3/SAC_CONFIG_3___high_alpha_lr1598053716.1167474score_2.42.png "Benzene Toluene p-Xylene Final Design")
+Interestingly the current best solution uses 3 columms instead of the expected 2 columns 
+ ![alt text](https://github.com/lollcat/DistillationTrain-Gym/blob/Feature-double_done/SAC/BFDs/CONFIG%203/Attempt%202%20(best)/SAC_CONFIG_3___1598820337.9998825score_2.43.png "Benzene Toluene p-Xylene Final Design")
+ ### Hydrocarbon Distillation
+ ![alt text](https://github.com/lollcat/DistillationTrain-Gym/blob/Feature-double_done/SAC/BFDs/CONFIG%200/best/SAC_CONFIG_0___1599080706.16091score_2.7.png "Hydrocarbon distillation)
  
  
 ## TODO
