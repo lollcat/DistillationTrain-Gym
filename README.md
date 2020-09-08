@@ -26,16 +26,12 @@ Distillation-Gym can be applied to any initial starting stream component selecti
 Interestingly the current best solution uses 3 columms instead of the expected 2 columns 
  ![alt text](https://github.com/lollcat/DistillationTrain-Gym/blob/Feature-double_done/SAC/BFDs/CONFIG%203/Attempt%202%20(best)/SAC_CONFIG_3___1598820337.9998825score_2.43.png "Benzene Toluene p-Xylene Final Design")
  ### Hydrocarbon Distillation
+Agent is able to design sequence that achieves much higher revenue (through good recovery) than cost  
  ![alt text](https://github.com/lollcat/DistillationTrain-Gym/blob/Feature-double_done/SAC/BFDs/CONFIG%200/best/SAC_CONFIG_0___1599080706.16091score_2.7.png "Hydrocarbon distillation")
  
  
 ## TODO
 ### Short Term
-  - [ ] Write out this README fully
-  - [ ] Create example solution in COCO
-    - Actually quite difficult to do
-    - If we do Luyben example then the paper can act as an example solution
-
 
 ### Long Term
   - [ ] Change action variables (i.e. not reflux ratio etc)
