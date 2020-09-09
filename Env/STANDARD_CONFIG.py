@@ -10,7 +10,7 @@ class CONFIG:
         self.config_number = config_number
 
     def get_config(self):
-        if self.config_number == 0:  # ChemSepExample
+        if self.config_number == 0:  # ChemSepExample LuybenPart
             # currently from thesis code, just copying iso & n butane to be same values
             compound_names = ["Ethane", "Propane", "Isobutane", "Butane",  "Iso-Pentane", "N-pentane"]
             Molar_weights = np.array([30.07, 44.097, 58.124, 58.124, 72.151, 72.151]) #g/mol
