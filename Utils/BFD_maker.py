@@ -32,7 +32,7 @@ class Visualiser:
                 if show_all is True:
                     stream_info = self.env.State.all_streams[stream_in-1]
                     assert stream_info.number == stream_in
-                    stream_label = f"stream {stream_info.number} \n" + f"{int(stream_info.temperature)} K, {int(stream_info.pressure)/1e3} kPa \n" + "".join(
+                    stream_label = f"stream {stream_info.number} \n" + f"{int(stream_info.temperature)} K, {int(stream_info.pressure/1e3)} kPa \n" + "".join(
                         [str(round(flow, 2)) + " mol/s \n" for flow in stream_info.flows])
                 else:
                     stream_label = int(stream_in + 1)
