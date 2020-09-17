@@ -31,13 +31,7 @@ Agent is able to design sequence that achieves much higher revenue (through good
  
 ## TODO
 ### Short Term
-
+ - [ ] Add more complete description to this repo
+ 
 ### Long Term
-  - [ ] Change action variables (i.e. not reflux ratio etc)
-    - but other variables aren't ratios so seem like they don't necessarily "make sense" as action variables (e.g. condensor duty would be weird for the agent to choose)
-    - selecting component splits would be cool but seems like just gives solve errors with ThomsonKing example
-    - maybe ask for advice here
-  - Not getting speedup from asynchronous run (due to ChemSep + COCO?) 
-  - Once asynch problem with simulators gets fixed will need to rewrite all the asynch code as it is now all old + buggy + requires many updates
- 
- 
+  - [ ] 
