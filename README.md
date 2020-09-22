@@ -13,7 +13,6 @@ Using COCO simulator and ChemSep for Simulation
  - During each step the agent is given (as the (partial) observation of the environments current state) one of the process outlet stream for which it has to decide whether or not to seperate
     - If the agent decides to seperate the stream, it then has to select an operating pressure (controlled by a valve before the column) and column specification (number of stages, reflux ratio and reboil ratio). 
     - If the agent decides not to seperate the stream it becomes an outlet stream for the final process design
- - To simplfy the state a tree structure Markov Decision Process was created (*Explain further*)
  
  ## Agents
   - Soft Actor Critic (SAC)
