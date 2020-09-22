@@ -1,6 +1,5 @@
 # Distillation-Gym
-<br>
-Currently being build
+
 <br>
 Designing chemical engineering distillation processes with reinforcement learning
 <br>
