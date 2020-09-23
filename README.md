@@ -1,5 +1,5 @@
 # Distillation-Gym
-See [paper](../blob/Feature-double_done/Deep_Reinforcement_Learning_for_Process_Synthesis.pdf) for complete description
+See [paper](../Feature-double_done/Deep_Reinforcement_Learning_for_Process_Synthesis.pdf) for complete description
 [GitHub](http://github.com)
 <br>
 Designing chemical engineering distillation processes with reinforcement learning
