@@ -6,7 +6,7 @@ Designing chemical engineering distillation processes with reinforcement learnin
 <br>
 Using COCO simulator and ChemSep for Simulation
 <br>
-See [paper](https://github.com/lollcat/DistillationTrain-Gym/blob/Feature-double_done/Deep_Reinforcement_Learning_for_Process_Synthesis.pdf) for complete description
+See [paper](../blob/Feature-double_done/Deep_Reinforcement_Learning_for_Process_Synthesis.pdf) for complete description
 <br>
 
 ## Abstract
@@ -27,8 +27,8 @@ engineering process synthesis.
 ## Example Problems
 Distillation-Gym can be applied to any initial starting stream component selection and composition. The following examples are given:
 ### Benzene Toluene p-Xylene (taken from [ChemSep Examples](http://www.chemsep.org/downloads/index.html))
- ![alt text](https://github.com/lollcat/DistillationTrain-Gym/blob/Feature-double_done/SAC/BFDs/CONFIG%203/Attempt%202%20(best)/SAC_CONFIG_3___1598820337.9998825score_2.43.png "Benzene Toluene p-Xylene Final Design")
+ ![alt text](../blob/Feature-double_done/SAC/BFDs/CONFIG%203/Attempt%202%20(best)/SAC_CONFIG_3___1598820337.9998825score_2.43.png "Benzene Toluene p-Xylene Final Design")
  ### Hydrocarbon Distillation
 Agent is able to design sequence that achieves much higher revenue (through good recovery) than cost  
- ![alt text](https://github.com/lollcat/DistillationTrain-Gym/blob/Feature-double_done/SAC/BFDs/CONFIG%200/best/SAC_CONFIG_0___1599080706.16091score_2.7.png "Hydrocarbon distillation")
+ ![alt text](..//blob/Feature-double_done/SAC/BFDs/CONFIG%200/best/SAC_CONFIG_0___1599080706.16091score_2.7.png "Hydrocarbon distillation")
  
