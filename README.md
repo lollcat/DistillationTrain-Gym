@@ -6,7 +6,7 @@ Designing chemical engineering distillation processes with reinforcement learnin
 <br>
 Using COCO simulator and ChemSep for Simulation
 <br>
-See [paper](../blob/Feature-double_done/Deep_Reinforcement_Learning_for_Process_Synthesis.pdf) for complete description
+See [ paper ](../blob/Feature-double_done/Deep_Reinforcement_Learning_for_Process_Synthesis.pdf) for complete description
 <br>
 
 ## Abstract
