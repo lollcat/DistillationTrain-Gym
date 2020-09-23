@@ -1,12 +1,11 @@
 # Distillation-Gym
 
-
+[GitHub](http://github.com)
 <br>
 Designing chemical engineering distillation processes with reinforcement learning
 <br>
 Using COCO simulator and ChemSep for Simulation
 <br>
-[I'm an inline-style link](https://www.google.com)
 See [ paper ](../blob/Feature-double_done/Deep_Reinforcement_Learning_for_Process_Synthesis.pdf) for complete description
 <br>
 
