@@ -1,18 +1,22 @@
 # Distillation-Gym
 
+See paper for details
 <br>
 Designing chemical engineering distillation processes with reinforcement learning
 <br>
 Using COCO simulator and ChemSep for Simulation
 <br>
 
-## Summary
- - Given a pre-defined starting stream, product definition (required purity and selling price) and flowsheet thermophysical property specification. Design a distillation column train that maximises (revenue - total annual cost)
- - Revenue is calculated when new streams are produced according to the product definition
- - TAC is calculated by ChemSep
- - During each step the agent is given (as the (partial) observation of the environments current state) one of the process outlet stream for which it has to decide whether or not to seperate
-    - If the agent decides to seperate the stream, it then has to select an operating pressure (controlled by a valve before the column) and column specification (number of stages, reflux ratio and reboil ratio). 
-    - If the agent decides not to seperate the stream it becomes an outlet stream for the final process design
+## Abstract
+This paper demonstrates the application of reinforcement learning (RL) to process synthesis by
+presenting Distillation Gym, a set of RL environments in which an RL agent is tasked with designing
+a distillation train, given a user defined multi-component feed stream. Distillation Gym interfaces
+with a process simulator (COCO and ChemSep) to simulate the environment. A demonstration of two
+distillation problem examples are discussed in this paper (a Benzene, Toluene, P-xylene separation
+problem and a hydrocarbon separation problem), in which a deep RL agent is successfully able to
+learn within Distillation Gym to produce reasonable designs. Finally, this paper proposes the creation
+of Chemical Engineering Gym, an all-purpose reinforcement learning software toolkit for chemical
+engineering process synthesis.
  
  ## Agents
   - Soft Actor Critic (SAC)
@@ -26,10 +30,3 @@ Distillation-Gym can be applied to any initial starting stream component selecti
 Agent is able to design sequence that achieves much higher revenue (through good recovery) than cost  
  ![alt text](https://github.com/lollcat/DistillationTrain-Gym/blob/Feature-double_done/SAC/BFDs/CONFIG%200/best/SAC_CONFIG_0___1599080706.16091score_2.7.png "Hydrocarbon distillation")
  
- 
-## TODO
-### Short Term
- - [ ] Add more complete description to this repo
- 
-### Long Term
-  - [ ] 
