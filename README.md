@@ -1,6 +1,5 @@
 # Distillation-Gym
 
-[GitHub](http://github.com)
 <br>
 Designing chemical engineering distillation processes with reinforcement learning
 <br>
