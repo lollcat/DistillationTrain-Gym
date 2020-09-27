@@ -20,7 +20,7 @@ of Chemical Engineering Gym, an all-purpose reinforcement learning software tool
 engineering process synthesis.
  
  ## Agents
-  - Soft Actor Critic (SAC)
+  - Soft Actor Critic (SAC) - this is the main agent that was used
   - Deep Deterministic Policy Gradient (DDPG)
  
 ## Example Problems
