@@ -1,11 +1,11 @@
 # Distillation-Gym
-See [paper](../Feature-double_done/Deep_Reinforcement_Learning_for_Process_Synthesis.pdf) for complete description
+ - See [paper](../Feature-double_done/Deep_Reinforcement_Learning_for_Process_Synthesis.pdf) for complete description
 <br>
-Designing chemical engineering distillation processes with reinforcement learning
+  - Designing chemical engineering distillation processes with reinforcement learning
 <br>
-Using [COCO simulator](https://www.cocosimulator.org/) and [ChemSep](http://www.chemsep.org/program/index.html) for Simulation
+  - Using [COCO simulator](https://www.cocosimulator.org/) and [ChemSep](http://www.chemsep.org/program/index.html) for Simulation
 <br>
-To run the agent, try [this file](../Feature-double_done/SAC/run_SAC.py) and see details in "About this repo" at the bottom of this page
+ - To run the agent, try [this file](../Feature-double_done/SAC/run_SAC.py) and see details in "About this repo" at the bottom of this page
 <br>
 
 ## Abstract
