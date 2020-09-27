@@ -3,7 +3,6 @@
  - Designing chemical engineering distillation processes with reinforcement learning
  - Using [COCO simulator](https://www.cocosimulator.org/) and [ChemSep](http://www.chemsep.org/program/index.html) for Simulation
  - To run the agent, try [this file](../Feature-double_done/SAC/run_SAC.py) and see details in "About this repo" at the bottom of this page
-<br>
 
 ## Abstract
 This paper demonstrates the application of reinforcement learning (RL) to process synthesis by
@@ -35,6 +34,6 @@ Agent is able to design sequence that achieves much higher revenue (through good
   - SAC: The main agent
   - Utils: Some useful extra stuff (e.g. BFD generator)
 The other folders and files are just playing around with some other stuff (e.g. DDPG agent)
-<br> 
+\
 See [requirements.txt](../Feature-double_done/requirements.txt) for required packages
  
