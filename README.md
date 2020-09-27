@@ -31,3 +31,11 @@ Distillation-Gym can be applied to any initial starting stream component selecti
 Agent is able to design sequence that achieves much higher revenue (through good recovery) than cost  
  ![alt text](../Feature-double_done/SAC/BFDs/CONFIG%200/best/SAC_CONFIG_0___1599080706.16091score_2.7.png "Hydrocarbon distillation")
  
+ 
+ ## About this Repo
+ The important folders are:
+  - Env: Contains the RL environment
+  - SAC: The main agent
+  - Utils: Some useful extra stuff (e.g. BFD generator)
+The other files are experimenting with various other stuff
+ 
