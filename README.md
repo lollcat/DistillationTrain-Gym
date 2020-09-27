@@ -5,7 +5,7 @@ Designing chemical engineering distillation processes with reinforcement learnin
 <br>
 Using COCO simulator and ChemSep for Simulation
 <br>
-To run the agent, try [this](../Feature-double_done/SAC/run_SAC.py)
+To run the agent, try [this file](../Feature-double_done/SAC/run_SAC.py)
 <br>
 
 ## Abstract
