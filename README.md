@@ -37,5 +37,6 @@ Agent is able to design sequence that achieves much higher revenue (through good
   - Env: Contains the RL environment
   - SAC: The main agent
   - Utils: Some useful extra stuff (e.g. BFD generator)
+  <br>
 The other files are experimenting with various other stuff
  
