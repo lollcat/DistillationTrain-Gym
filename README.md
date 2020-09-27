@@ -3,7 +3,7 @@ See [paper](../Feature-double_done/Deep_Reinforcement_Learning_for_Process_Synth
 <br>
 Designing chemical engineering distillation processes with reinforcement learning
 <br>
-Using COCO simulator and ChemSep for Simulation
+Using [COCO simulator](https://www.cocosimulator.org/) and [ChemSep](http://www.chemsep.org/program/index.html) for Simulation
 <br>
 To run the agent, try [this file](../Feature-double_done/SAC/run_SAC.py)
 <br>
