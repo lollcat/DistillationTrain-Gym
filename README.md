@@ -32,7 +32,7 @@ Agent is able to design sequence that achieves much higher revenue (through good
  The important folders are:
   - Env: Contains the RL environment (where python and COCO simulator speak using the COM interface)
   - SAC: The main agent
-  - Utils: Some useful extra stuff (e.g. BFD generator)
+  - Utils: Some useful extra stuff (e.g. BFD generator)\
 The other folders and files are just playing around with some other stuff (e.g. DDPG agent)
 \
 See [requirements.txt](../Feature-double_done/requirements.txt) for required packages
