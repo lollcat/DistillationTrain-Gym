@@ -38,3 +38,10 @@ The other folders and files are just playing around with some other stuff (e.g. 
 See [requirements.txt](../Feature-double_done/requirements.txt) for required packages\
 Both COCO and ChemSep need to be installed: To install these go to https://www.cocosimulator.org/index_download.html
  
+To cite please use:
+@article{midgley2020deep,
+  title={Deep Reinforcement Learning for Process Synthesis},
+  author={Midgley, Laurence Illing},
+  journal={arXiv preprint arXiv:2009.13265},
+  year={2020}
+}
