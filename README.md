@@ -3,6 +3,7 @@
  - Designing chemical engineering distillation processes with reinforcement learning
  - Using [COCO simulator](https://www.cocosimulator.org/) and [ChemSep](http://www.chemsep.org/program/index.html) for Simulation
  - To run the agent, try [this file](../Feature-double_done/SAC/run_SAC.py) and see details in "About this repo" at the bottom of this page
+ - See repository and report [here](https://github.com/lollcat/RL-Process-Design) which this work builds upon. This repository contains a simpler illustrative example of RL for chemical engineering process synthesis, with a colab notebook that can be run in your browser. 
 
 ## Abstract
 This paper demonstrates the application of reinforcement learning (RL) to process synthesis by
@@ -46,3 +47,5 @@ Both COCO and ChemSep need to be installed: To install these go to https://www.c
   journal={arXiv preprint arXiv:2009.13265},
   year={2020}
 }
+
+
